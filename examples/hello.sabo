@@ -1,0 +1,31 @@
+-- Hello Crux!
+-- Basic stack operations
+2 3 + println
+
+-- Define a word with pattern matching
+: factorial
+  [0] -> 1
+  [n] -> n n 1 - factorial *
+;
+
+5 factorial println
+10 factorial println
+
+-- Guards
+: classify
+  [n] where n > 0 -> "positive"
+  [n] where n < 0 -> "negative"
+  [n] -> "zero"
+;
+
+42 classify println
+-7 classify println
+0 classify println
+
+-- Lists
+{1, 2, 3, 4, 5} println
+
+-- Quotations
+[2 *] >aux
+7 aux> ~
+println

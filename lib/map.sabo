@@ -1,0 +1,8 @@
+-- Standard Library: Map
+-- Map (hash map / dictionary) utilities.
+
+-- Check if map is empty
+: empty_map? [m] -> m keys len 0 == ;
+
+-- Size of a map
+: map_size [m] -> m keys len ;

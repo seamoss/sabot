@@ -1,0 +1,74 @@
+-- =============================================
+--  W O R D C O U N T
+--  A wc-like utility written in Sabo
+--  Usage: sabo programs/wordcount.sabo <file>
+-- =============================================
+
+let all_args = args
+
+all_args len 3 <
+[
+  "Usage: sabo programs/wordcount.sabo <file>" println
+  "" "error" error
+] if_true
+
+let path = all_args 2 nth
+let content = path read_file
+
+-- === COUNTS ===
+let line_count = content "\n" split len
+let normalized = content "\n" " " replace "\t" " " replace
+let all_words = normalized " " split ["" !=] filter
+let word_count = all_words len
+let char_count = content len
+
+-- === FREQUENCY MAP ===
+-- fold: accumulator=map, each elem=word
+-- stack in quotation: map word
+let word_map = all_words [lowercase] map #{} [
+  -- stack: map word
+  over over has
+  [over over get 1 + set]
+  [1 set]
+  if_else
+] fold
+
+let unique_count = word_map keys len
+
+-- === DISPLAY ===
+"" println
+"=== Word Count: {path} ===" println
+"" println
+"  Lines:        {line_count}" println
+"  Words:        {word_count}" println
+"  Characters:   {char_count}" println
+"  Unique words: {unique_count}" println
+"" println
+
+-- === TOP 10 WORDS ===
+"--- Top 10 words ---" println
+
+-- Build sortable "count:word" strings (zero-padded count for lexicographic sort)
+word_map keys [
+  dup word_map swap get to_str
+  -- stack: word count_str
+  -- zero-pad to 8 digits
+  dup len 8 swap - 0 swap range "" swap [drop "0" +] each
+  -- stack: word count_str padding
+  swap + ":" + swap +
+] map sort reverse
+
+-- Display first 10
+0 "shown" cell
+[
+  shown 10 <
+  [
+    ":" split
+    dup 1 nth >word
+    0 nth
+    -- strip leading zeros: convert to int and back
+    to_int to_str
+    "  " print print "\t" print word> println
+    shown 1 + "shown" set_cell
+  ] if_true
+] each

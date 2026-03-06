@@ -1,0 +1,43 @@
+-- =============================================
+-- Sabo Tier 3: Reactive Cells
+-- =============================================
+
+-- Create reactive cells
+10 "x" cell
+20 "y" cell
+
+-- Computed cell: auto-recomputes when dependencies change
+[x y +] "sum" computed
+
+"Initial: x=10, y=20" println
+"sum = " print sum println
+
+-- Watcher: fires when condition becomes true
+[sum 50 >] ["ALERT: sum exceeds 50! value=" print sum println] when
+
+-- Update x -> triggers recomputation + watchers
+"" println
+"Setting x = 35..." println
+35 "x" set_cell
+"sum = " print sum println
+
+-- This one triggers the watcher
+"" println
+"Setting y = 100..." println
+100 "y" set_cell
+"sum = " print sum println
+
+-- Temperature converter with reactive cells
+"" println
+"-- Temperature converter --" println
+32 "temp_f" cell
+[temp_f 32 - 5 * 9 /] "temp_c" computed
+
+72 "temp_f" set_cell
+"72F = " temp_c to_str + "C" + println
+
+212 "temp_f" set_cell
+"212F = " temp_c to_str + "C" + println
+
+0 "temp_f" set_cell
+"0F = " temp_c to_str + "C" + println

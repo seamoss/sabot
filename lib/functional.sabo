@@ -1,0 +1,56 @@
+-- Standard Library: Functional
+-- Higher-order combinators and functional patterns.
+
+-- Identity: return the value unchanged
+: identity [x] -> x ;
+
+-- Constant: ignore second arg, return first
+: const [x, _] -> x ;
+
+-- Flip: swap two args then apply quotation
+: flip [a, b, q] -> b a q ~ ;
+
+-- Apply a quotation n times to the stack
+: times
+  [_, 0] ->
+  [q, n] -> q ~ q n 1 - times
+;
+
+-- Compose two quotations (same as . operator but as a word)
+: compose [f, g] -> f g . ;
+
+-- Apply quotation only if condition is true, otherwise leave value
+: when_true
+  [val, cond, q] -> cond [val q ~] [val] if_else
+;
+
+-- Apply quotation only if condition is false
+: when_false
+  [val, cond, q] -> cond [val] [val q ~] if_else
+;
+
+-- Pipe a value through a list of quotations
+: pipe
+  [val, qs] -> qs len 0 ==
+    [val]
+    [val qs head ~ qs tail pipe]
+    if_else
+;
+
+-- Iterate: apply f repeatedly, collecting n results starting from seed
+: iterate_helper
+  [seed, _, 0, acc] -> acc reverse
+  [seed, f, n, acc] -> seed f ~ f n 1 - seed acc cons iterate_helper
+;
+
+: iterate
+  [seed, f, n] -> seed f n {} iterate_helper
+;
+
+-- Until: keep applying f to val until pred is true
+: until
+  [val, pred, f] -> val pred ~
+    [val]
+    [val f ~ pred f until]
+    if_else
+;

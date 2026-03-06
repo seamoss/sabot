@@ -1,0 +1,433 @@
+-- =============================================
+--  T H E   V A U L T
+--  A text adventure written in Sabo
+-- =============================================
+
+-- ============ GAME STATE (reactive cells) ============
+
+"cell_a" "room" cell
+{} "inventory" cell
+false "power_on" cell
+false "vault_open" cell
+false "game_over" cell
+0 "turns" cell
+
+-- ============ ROOM DATA ============
+
+let rooms = #{
+  "cell_a" => #{
+    "name" => "Holding Cell A",
+    "desc" => "A cold concrete room. Fluorescent lights buzz overhead.\nThere is a rusty COT against the wall and a steel door to the NORTH.\nSomething glints under the cot.",
+    "exits" => #{"north" => "corridor"}
+  },
+  "corridor" => #{
+    "name" => "Main Corridor",
+    "desc" => "A long, dimly lit corridor stretches east and west.\nEmergency lighting casts red shadows on the walls.\nThe holding cell is SOUTH. SECURITY is EAST. Darkness lies WEST.",
+    "exits" => #{"south" => "cell_a", "east" => "security", "west" => "generator"}
+  },
+  "security" => #{
+    "name" => "Security Office",
+    "desc" => "Banks of dead MONITORS line the walls. A DESK sits in the center\nwith scattered papers. A KEYCARD READER is mounted next to a\nreinforced DOOR marked VAULT. The corridor is WEST.",
+    "exits" => #{"west" => "corridor", "east" => "vault"}
+  },
+  "generator" => #{
+    "name" => "Generator Room",
+    "desc" => "Massive GENERATORS fill this cavernous room. The air reeks of\ndiesel fuel. A control panel with a big red SWITCH sits on the\nnorth wall. The corridor is back EAST.",
+    "exits" => #{"east" => "corridor"}
+  },
+  "vault" => #{
+    "name" => "The Vault",
+    "desc" => "A massive circular vault. Steel deposit boxes line every wall\nfrom floor to ceiling. In the center, on a stone pedestal,\nsits a single silver BRIEFCASE. A LADDER on the far wall leads UP.",
+    "exits" => #{"west" => "security", "up" => "escape"}
+  },
+  "escape" => #{
+    "name" => "Surface",
+    "desc" => "",
+    "exits" => #{}
+  }
+}
+
+-- ============ HELPERS ============
+
+: get_room  [name] -> rooms name get ;
+: room_name [r] -> r "name" get ;
+: room_desc [r] -> r "desc" get ;
+: room_exits [r] -> r "exits" get ;
+: has_item [item] -> inventory item contains ;
+: add_item [item] -> inventory item append "inventory" set_cell ;
+: bump_turns [] -> turns 1 + "turns" set_cell ;
+
+-- ============ LOOK ============
+
+: do_look
+  [] ->
+    "" println
+    room get_room room_desc println
+    "  [exits:" print
+    room get_room room_exits keys [" " swap + print] each
+    "]" println
+;
+
+-- ============ MOVEMENT ============
+
+: try_enter_vault
+  [] ->
+    vault_open
+    ["vault" "room" set_cell "" println room get_room room_name println do_look]
+    ["The vault door is sealed shut. The keycard reader blinks expectantly." println]
+    if_else
+;
+
+: do_escape
+  [] ->
+    "briefcase" has_item
+    [
+      "" println
+      "================================================" println
+      "" println
+      "  You climb the ladder and push open the hatch." println
+      "  Cool night air hits your face." println
+      "" println
+      "  You're standing in a field under the stars." println
+      "  The briefcase is heavy in your hand." println
+      "  Behind you, the hatch leads back underground." println
+      "" println
+      "  You don't look back." println
+      "" println
+      "================================================" println
+      "  Y O U   E S C A P E D   T H E   V A U L T" println
+      "  Turns: " print turns println
+      "  Inventory: " print inventory println
+      "================================================" println
+      "" println
+      true "game_over" set_cell
+    ]
+    [
+      "You climb up and peek through the hatch at the night sky..." println
+      "No. You can't leave empty-handed." println
+      "There must be something valuable down here." println
+    ]
+    if_else
+;
+
+: do_go
+  [dir] ->
+    room get_room room_exits dir has
+    [
+      room get_room room_exits dir get
+      dup "vault" ==
+      [drop try_enter_vault]
+      [
+        dup "escape" ==
+        [drop do_escape]
+        ["room" set_cell "" println room get_room room_name println do_look]
+        if_else
+      ]
+      if_else
+    ]
+    ["You can't go that way." println]
+    if_else
+;
+
+-- ============ TAKE ============
+
+: do_take
+  ["key"] ->
+    room "cell_a" ==
+    "key" has_item not and
+    ["key" add_item "You reach under the cot and find a small brass KEY. Taken." println]
+    [
+      "key" has_item
+      ["You already have the key." println]
+      ["There's nothing like that here." println]
+      if_else
+    ]
+    if_else
+  ["keycard"] ->
+    room "security" ==
+    "keycard" has_item not and
+    ["keycard" add_item "You find a SECURITY KEYCARD buried under the papers. Taken." println]
+    [
+      "keycard" has_item
+      ["You already have the keycard." println]
+      ["There's nothing like that here." println]
+      if_else
+    ]
+    if_else
+  ["briefcase"] ->
+    room "vault" ==
+    "briefcase" has_item not and
+    ["briefcase" add_item "You grab the BRIEFCASE from the pedestal. It's heavy. Very heavy." println]
+    [
+      "briefcase" has_item
+      ["You're already carrying it." println]
+      ["There's no briefcase here." println]
+      if_else
+    ]
+    if_else
+  [_] -> "You can't take that." println
+;
+
+-- ============ USE ============
+
+: do_use
+  ["switch"] ->
+    room "generator" ==
+    [
+      power_on
+      ["The generators are already running." println]
+      [
+        true "power_on" set_cell
+        "You throw the switch. The generators ROAR to life!" println
+        "Lights flicker on throughout the facility." println
+      ]
+      if_else
+    ]
+    ["There's no switch here." println]
+    if_else
+  ["keycard"] ->
+    room "security" ==
+    [
+      "keycard" has_item
+      [
+        power_on
+        [
+          vault_open
+          ["The vault is already open." println]
+          [
+            true "vault_open" set_cell
+            "You swipe the keycard. A green light flashes." println
+            "CLUNK. The vault door slowly swings open to the EAST." println
+          ]
+          if_else
+        ]
+        ["You swipe the keycard but the reader is dead. No power." println]
+        if_else
+      ]
+      ["You don't have a keycard." println]
+      if_else
+    ]
+    ["There's no keycard reader here." println]
+    if_else
+  ["key"] ->
+    "There's nothing to unlock with the key here." println
+  [_] -> "You can't use that." println
+;
+
+-- ============ EXAMINE ============
+
+: do_examine
+  ["room"] -> do_look
+  ["cot"] ->
+    room "cell_a" ==
+    [
+      "key" has_item
+      ["A rusty metal cot. Nothing left under it." println]
+      ["A rusty metal cot bolted to the floor. Something GLINTS underneath..." println]
+      if_else
+    ]
+    ["There's no cot here." println]
+    if_else
+  ["desk"] ->
+    room "security" ==
+    [
+      "keycard" has_item
+      ["Scattered papers about facility protocols. Nothing useful left." println]
+      ["A metal desk covered in papers. Memos mention a 'security keycard'..." println]
+      if_else
+    ]
+    ["There's no desk here." println]
+    if_else
+  ["monitors"] ->
+    room "security" ==
+    [
+      power_on
+      ["The monitors flicker with static. Most are cracked." println]
+      ["Dead screens. No power to the facility." println]
+      if_else
+    ]
+    ["No monitors here." println]
+    if_else
+  ["generators"] ->
+    room "generator" ==
+    [
+      power_on
+      ["The generators hum steadily. Fuel gauge reads 38%." println]
+      ["Massive diesel generators. Silent. A SWITCH on the control panel." println]
+      if_else
+    ]
+    ["No generators here." println]
+    if_else
+  ["switch"] ->
+    room "generator" ==
+    ["A big red switch on the control panel. Labeled: MAIN POWER." println]
+    ["There's no switch here." println]
+    if_else
+  ["reader"] ->
+    room "security" ==
+    [
+      power_on
+      [
+        vault_open
+        ["Green light. Vault door is open." println]
+        ["The reader blinks red, waiting for a keycard swipe." println]
+        if_else
+      ]
+      ["The keycard reader is dark. No power." println]
+      if_else
+    ]
+    ["No reader here." println]
+    if_else
+  ["briefcase"] ->
+    "briefcase" has_item
+    room "vault" == or
+    ["A heavy silver briefcase. Locked tight. Someone wanted this safe." println]
+    ["You don't see a briefcase." println]
+    if_else
+  ["ladder"] ->
+    room "vault" ==
+    ["A metal ladder bolted to the wall, leading UP to a hatch." println]
+    ["No ladder here." println]
+    if_else
+  ["door"] ->
+    room "security" ==
+    [
+      vault_open
+      ["The vault door stands open." println]
+      ["A reinforced steel door. A keycard reader sits beside it." println]
+      if_else
+    ]
+    ["Which door?" println]
+    if_else
+  ["self"] ->
+    "You're bruised and confused, but alive. That counts." println
+  [_] -> "You don't see anything special about that." println
+;
+
+-- ============ INVENTORY ============
+
+: do_inventory
+  [] ->
+    inventory empty
+    ["You're not carrying anything." println]
+    ["Carrying: " print inventory println]
+    if_else
+;
+
+-- ============ HELP ============
+
+: do_help
+  [] ->
+    "" println
+    "=== COMMANDS ===" println
+    "  look (l)            - Describe current room" println
+    "  north/south/east/west/up (n/s/e/w/u)" println
+    "                      - Move in a direction" println
+    "  take <item>         - Pick something up" println
+    "  use <item>          - Use an item" println
+    "  examine <thing> (x) - Look at something closely" println
+    "  inventory (i)       - Check your pockets" println
+    "  help                - This message" println
+    "  quit                - Give up" println
+    "" println
+;
+
+-- ============ COMMAND DISPATCH ============
+
+: dispatch_verb
+  ["look"] -> do_look
+  ["l"] -> do_look
+  ["inventory"] -> do_inventory
+  ["inv"] -> do_inventory
+  ["i"] -> do_inventory
+  ["help"] -> do_help
+  ["north"] -> "north" do_go
+  ["south"] -> "south" do_go
+  ["east"] -> "east" do_go
+  ["west"] -> "west" do_go
+  ["up"] -> "up" do_go
+  ["n"] -> "north" do_go
+  ["s"] -> "south" do_go
+  ["e"] -> "east" do_go
+  ["w"] -> "west" do_go
+  ["u"] -> "up" do_go
+  ["quit"] -> true "game_over" set_cell "Goodbye." println
+  ["exit"] -> true "game_over" set_cell "Goodbye." println
+  [_] -> "I don't understand. Type 'help' for commands." println
+;
+
+: parse_cmd
+  [cmd] ->
+    cmd " " split
+    dup len 1 ==
+    [head dispatch_verb]
+    [
+      dup head swap tail head
+      -- stack: verb noun
+      swap
+      dup "go" ==    [drop do_go]
+      [
+        dup "take" == [drop do_take]
+        [
+          dup "get" ==  [drop do_take]
+          [
+            dup "use" ==  [drop do_use]
+            [
+              dup "examine" == [drop do_examine]
+              [
+                dup "x" == [drop do_examine]
+                [
+                  dup "look" == [drop do_examine]
+                  [drop drop "I don't understand. Type 'help' for commands." println]
+                  if_else
+                ]
+                if_else
+              ]
+              if_else
+            ]
+            if_else
+          ]
+          if_else
+        ]
+        if_else
+      ]
+      if_else
+    ]
+    if_else
+;
+
+-- ============ TITLE SCREEN ============
+
+"" println
+"================================================" println
+"          T H E   V A U L T" println
+"================================================" println
+"" println
+"  You wake up on a cold concrete floor." println
+"  Your head is pounding." println
+"  You don't remember how you got here." println
+"  One thing is certain: you need to get out." println
+
+do_look
+"" println
+"  (Type 'help' for commands)" println
+
+-- ============ GAME LOOP ============
+
+: game_loop
+  [] ->
+    game_over not
+    [
+      "" println
+      "> " input trim lowercase
+      dup empty not
+      [bump_turns parse_cmd]
+      [drop]
+      if_else
+      game_loop
+    ]
+    []
+    if_else
+;
+
+[game_loop] try drop

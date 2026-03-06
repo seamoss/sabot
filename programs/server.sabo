@@ -1,0 +1,118 @@
+-- =============================================
+--  S A B O   H T T P   S E R V E R
+--  A demo web server written in Sabo
+--  Usage: sabo programs/server.sabo
+-- =============================================
+
+-- === RESPONSE HELPERS ===
+
+: json_response
+  [body_data] ->
+    #{} "status" 200 set
+    "content_type" "application/json; charset=utf-8" set
+    "body" body_data json_encode set
+;
+
+: text_response
+  [body_text] ->
+    #{} "status" 200 set "body" body_text set
+;
+
+: error_response
+  [code, msg] ->
+    #{} "status" code set "body" msg set
+;
+
+: redirect_response
+  [url] ->
+    #{} "status" 302 set "body" "" set
+    "headers" #{} "Location" url set set
+;
+
+-- === ROUTE HANDLERS ===
+-- Each handler receives request map on stack, must leave response map
+
+: handle_hello
+  [req] -> "Hello from Sabo!" text_response
+;
+
+: handle_greet
+  [req] ->
+    req "params" get "name" get
+    "Hello, " swap + "!" +
+    text_response
+;
+
+: handle_echo
+  [req] -> req "query" get json_response
+;
+
+: handle_time
+  [req] ->
+    #{} "time_ms" time_ms set json_response
+;
+
+: fib
+  [0] -> 0
+  [1] -> 1
+  [n] -> n 1 - fib n 2 - fib +
+;
+
+: handle_fib
+  [req] ->
+    req "params" get "n" get to_int
+    dup 30 >
+    [
+      drop 400 "n must be <= 30" error_response
+    ]
+    [
+      dup >n fib >result
+      #{} "n" n> set "result" result> set json_response
+    ]
+    if_else
+;
+
+: handle_stats
+  [req] ->
+    #{} "status" "ok" set json_response
+;
+
+: handle_reverse
+  [req] ->
+    req "body" get json_parse
+    "text" get reverse >reversed
+    #{} "reversed" reversed> set json_response
+;
+
+: handle_sort
+  [req] ->
+    req "body" get json_parse
+    "items" get sort >sorted
+    #{} "sorted" sorted> set json_response
+;
+
+: handle_root
+  [req] -> "/static/index.html" redirect_response
+;
+
+-- === REGISTER ROUTES ===
+
+[handle_hello]   "/hello"        "GET"  route
+[handle_greet]   "/greet/:name"  "GET"  route
+[handle_echo]    "/api/echo"     "GET"  route
+[handle_time]    "/api/time"     "GET"  route
+[handle_fib]     "/api/fib/:n"   "GET"  route
+[handle_stats]   "/api/stats"    "GET"  route
+[handle_reverse] "/api/reverse"  "POST" route
+[handle_sort]    "/api/sort"     "POST" route
+[handle_root]    "/"             "GET"  route
+
+-- === STATIC FILES ===
+"programs/public" "/static" static_dir
+
+-- === START ===
+"" println
+"  Sabo Web Server Demo" println
+"  =====================" println
+
+8080 serve

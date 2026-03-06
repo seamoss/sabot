@@ -1,0 +1,75 @@
+-- =============================================
+--  G I T H U B   S T A T S
+--  Fetch and display GitHub user info via API
+--  Usage: sabo programs/github_stats.sabo <username>
+-- =============================================
+
+let all_args = args
+all_args len 3 <
+[
+  "Usage: sabo programs/github_stats.sabo <username>" println
+  "" "error" error
+] if_true
+
+let username = all_args 2 nth
+
+-- Fetch user data
+let url = "https://api.github.com/users/" username +
+[url http_get] try
+dup head :error ==
+[
+  "Failed to fetch data for '{username}': " print
+  tail head println
+  "" "error" error
+] if_true
+tail head json_parse
+
+-- Extract fields with safe defaults
+dup "login" get >login
+dup "name" get dup :null == [drop "(no name)"] [] if_else >name
+dup "bio" get dup :null == [drop "(no bio)"] [] if_else >bio
+dup "public_repos" get >repos
+dup "followers" get >followers
+dup "following" get >following
+dup "created_at" get >created
+drop
+
+-- Display
+"" println
+"================================================" println
+"  GitHub Profile: " print login> println
+"================================================" println
+"" println
+"  Name:         " print name> println
+"  Bio:          " print bio> println
+"  Public repos: " print repos> println
+"  Followers:    " print followers> println
+"  Following:    " print following> println
+"  Joined:       " print created> println
+"" println
+
+-- Fetch repos
+let repos_url = url "/repos?sort=stars&per_page=5" +
+[repos_url http_get] try
+dup head :error ==
+[
+  drop "  (Could not fetch repos)" println
+] [
+  tail head json_parse
+
+  "--- Top Repositories ---" println
+
+  [
+    dup "name" get >rname
+    dup "stargazers_count" get >stars
+    dup "language" get dup :null == [drop "???"] [] if_else >lang
+    "description" get dup :null == [drop "(no description)"] [] if_else >desc
+
+    "  " print rname> print
+    "  [" print lang> print "]" print
+    "  *" print stars> println
+    "    " print desc> println
+  ] each
+] if_else
+
+"" println

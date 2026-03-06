@@ -1,0 +1,81 @@
+-- Sabo Test Runner
+-- Discovers and runs test files in a directory.
+-- Usage: sabo tools/run_tests.sabo [directory]
+-- Defaults to "lib/" if no directory given.
+
+"lib/list.sabo" import
+"lib/string.sabo" import
+
+-- Check if filename looks like a test file
+: test_file? [name] -> name "_test" contains name "test_" contains or ;
+: sabo_file? [name] -> name ".sabo" contains ;
+
+-- Find all test files in a directory
+: find_tests
+  [dir] -> dir ls [dup sabo_file? swap test_file? and] filter
+;
+
+-- Build a 3-element list
+: triple [a, b, c] -> c {} cons b swap cons a swap cons ;
+
+-- Run one test file, return {path, "PASS"/"FAIL", output}
+: run_one_test
+  [path] ->
+    "cargo run -- test " path + " 2>&1" + exec_full
+    dup "code" get >code
+    dup "stdout" get >out
+    "stderr" get >err
+    code> 0 ==
+      [path "PASS" out> triple]
+      [path "FAIL" err> out> + triple]
+      if_else
+;
+
+-- Display a result
+: show_result
+  [result] ->
+    result 0 nth >name
+    result 1 nth >status
+    status> "PASS" ==
+      ["  PASS  " name> + println]
+      ["  FAIL  " name> + println
+       "        " result 2 nth trim + println]
+      if_else
+;
+
+-- Get target directory
+let dir = args len 3 > [args 2 nth] ["lib/"] if_else
+
+-- Discover tests
+let test_names = dir find_tests
+let test_paths = test_names [dir swap +] map_list
+
+-- Header
+"" println
+"=== Sabo Test Runner ===" println
+"Directory: " dir + println
+test_paths len to_str " test file(s) found" + println
+"" println
+
+-- Run with timing
+let t0 = time_ms
+let results = test_paths [run_one_test] map_list
+let elapsed = time_ms t0 -
+
+-- Display each result
+results [show_result] each
+
+-- Summary
+let passed = results [1 nth "PASS" ==] filter len
+let failed = results [1 nth "FAIL" ==] filter len
+"" println
+"--- Results ---" println
+"Passed: " passed to_str + println
+"Failed: " failed to_str + println
+"Time:   " elapsed to_str + "ms" + println
+"" println
+
+failed 0 >
+  ["SOME TESTS FAILED" println]
+  ["ALL TESTS PASSED" println]
+  if_else

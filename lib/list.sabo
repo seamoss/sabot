@@ -1,0 +1,127 @@
+-- Standard Library: List
+-- List manipulation utilities.
+
+-- Take first n elements
+: take
+  [_, 0] -> {}
+  [lst, n] -> lst len 0 ==
+    [{}]
+    [lst tail n 1 - take lst head swap cons]
+    if_else
+;
+
+-- Drop first n elements
+: drop_n
+  [lst, 0] -> lst
+  [lst, n] -> lst len 0 ==
+    [{}]
+    [lst tail n 1 - drop_n]
+    if_else
+;
+
+-- Concat two lists
+: concat_helper
+  [a, b] -> b len 0 ==
+    [a]
+    [a b head append b tail concat_helper]
+    if_else
+;
+
+: concat [a, b] -> a b concat_helper ;
+
+-- Flatten one level of nesting: {{1,2},{3}} -> {1,2,3}
+: flatten
+  [lst] -> lst {} [concat] fold
+;
+
+-- Zip two lists into list of pairs
+: make_pair [a, b] -> b {} cons a swap cons ;
+
+: zip_helper
+  [a, b, acc] -> a len 0 == b len 0 == or
+    [acc reverse]
+    [a tail b tail a head b head make_pair acc cons zip_helper]
+    if_else
+;
+
+: zip [a, b] -> a b {} zip_helper ;
+
+-- Find first element matching predicate via filter
+: find
+  [lst, pred] -> lst pred filter head
+;
+
+-- Any: does any element satisfy predicate?
+: any?
+  [lst, pred] -> lst pred filter len 0 >
+;
+
+-- All: do all elements satisfy predicate?
+: all?
+  [lst, pred] -> lst pred filter len lst len ==
+;
+
+-- Unique elements (preserves first occurrence order)
+: unique_helper
+  [lst, seen] -> lst len 0 ==
+    [seen reverse]
+    [lst head >h seen h> contains
+      [lst tail seen unique_helper]
+      [lst head >h2 lst tail h2> seen cons unique_helper]
+      if_else
+    ]
+    if_else
+;
+
+: unique [lst] -> lst {} unique_helper ;
+
+-- Last element of a list
+: last
+  [lst] -> lst lst len 1 - nth
+;
+
+-- Init: all elements except the last
+: init_helper
+  [lst, acc] -> lst len 1 ==
+    [acc reverse]
+    [lst tail lst head acc cons init_helper]
+    if_else
+;
+
+: init
+  [lst] -> lst {} init_helper
+;
+
+-- Repeat a value n times
+: repeat_helper
+  [_, 0, acc] -> acc reverse
+  [val, n, acc] -> val n 1 - val acc cons repeat_helper
+;
+
+: repeat [val, n] -> val n {} repeat_helper ;
+
+-- Index of first occurrence (0-based, returns -1 if not found)
+: index_of_helper
+  [lst, val, i] -> lst len 0 ==
+    [-1]
+    [lst head val ==
+      [i]
+      [lst tail val i 1 + index_of_helper]
+      if_else
+    ]
+    if_else
+;
+
+: index_of [lst, val] -> lst val 0 index_of_helper ;
+
+-- Sum / Product (convenience, delegates to fold)
+: sum_list  [lst] -> lst 0 [+] fold ;
+: prod_list [lst] -> lst 1 [*] fold ;
+
+-- Chunk a list into sublists of size n
+: chunk
+  [lst, n] -> lst len 0 ==
+    [{}]
+    [lst n take lst n drop_n n chunk swap cons]
+    if_else
+;

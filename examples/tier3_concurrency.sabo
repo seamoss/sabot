@@ -1,0 +1,53 @@
+-- =============================================
+-- Sabo Tier 3: Concurrency (spawn, channels)
+-- =============================================
+
+-- 1. Basic spawn + await
+"-- Spawn & Await --" println
+[42] spawn await println
+
+-- 2. Channels: producer/consumer
+"" println
+"-- Channels --" println
+
+-- Spawn a producer that sends 3 messages
+[
+  "hello" "work" send
+  "world" "work" send
+  "done"  "work" send
+] spawn drop
+
+-- Small delay to let producer run
+50 sleep_ms
+
+-- Receive messages
+"work" recv println
+"work" recv println
+"work" recv println
+
+-- 3. Parallel computation
+"" println
+"-- Parallel computation --" println
+
+-- Spawn two tasks that compute independently
+let task1 = [1 1000000 range 0 [+] fold] spawn
+let task2 = [1 500000 range 0 [+] fold] spawn
+
+task1 await
+"Sum 1..1M = " swap to_str + println
+task2 await
+"Sum 1..500K = " swap to_str + println
+
+-- 4. Fan-out pattern with channels
+"" println
+"-- Fan-out --" println
+
+[10 20 * "results" send] spawn drop
+[30 40 * "results" send] spawn drop
+[50 60 * "results" send] spawn drop
+
+100 sleep_ms
+
+"results" recv println
+"results" recv println
+"results" recv println

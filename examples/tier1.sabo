@@ -1,0 +1,84 @@
+-- =============================================
+-- Sabo Tier 1 Features Demo
+-- =============================================
+
+-- 1. Let bindings
+let name = "Sabo"
+let version = 2
+
+-- 2. String interpolation
+"Welcome to {name} v{version}!" println
+
+-- 3. Maps
+let person = #{"name" => "Alice", "age" => 30, "lang" => "Sabo"}
+person println
+
+-- Map operations
+person "name" get println
+person "age" get println
+person "email" "n/a" get_or println
+
+-- Set a value
+person "age" 31 set println
+
+-- Keys and values
+person keys println
+person values println
+
+-- Merge maps
+let extra = #{"city" => "Portland", "role" => "engineer"}
+person extra merge println
+
+-- Has key
+person "name" has println
+person "email" has println
+
+-- 4. Error handling with try
+[10 0 /] try println
+[10 2 /] try println
+["hello" 42 +] try println
+
+-- 5. Higher-order list operations
+let nums = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+
+-- map_list
+nums [2 *] map_list println
+
+-- filter
+nums [2 %  0 ==] filter println
+
+-- fold (sum)
+nums 0 [+] fold println
+
+-- each
+"Counting: " print
+nums [to_str " " + print] each
+"" println
+
+-- range
+1 11 range println
+
+-- 6. More string ops
+"hello world" " " split println
+{1, 2, 3} ", " join println
+
+-- 7. List ops
+{3, 1, 4, 1, 5, 9} sort println
+{1, 2, 3} reverse println
+"hello" reverse println
+{1, 2, 3} 4 append println
+{1, 2, 3} 2 contains println
+{1, 2, 3} 5 contains println
+
+-- 8. Type conversions
+"42" int println
+42 float println
+3.14 int println
+42 to_str type println
+
+-- 9. Pattern matching with let-bound variables works
+: greet
+  [n] -> "Hello, {n}!"
+;
+"world" greet println
+name greet println

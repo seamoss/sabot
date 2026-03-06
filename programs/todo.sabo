@@ -1,0 +1,147 @@
+-- =============================================
+--  S A B O   T O D O   A P P
+--  A CLI task manager backed by SQLite
+--  Usage: sabo programs/todo.sabo [command] [args]
+-- =============================================
+
+-- Open (or create) the database
+"todo.db" db_open
+
+-- Ensure the table exists
+"CREATE TABLE IF NOT EXISTS todos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  done INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+)" db_exec drop
+
+-- === COMMANDS ===
+
+: show_help
+  [] ->
+    "" println
+    "  Sabo Todo - SQLite-backed task manager" println
+    "  ======================================" println
+    "  Commands:" println
+    "    add <title>     Add a new todo" println
+    "    list            List all todos" println
+    "    done <id>       Mark a todo as done" println
+    "    undo <id>       Mark a todo as not done" println
+    "    remove <id>     Delete a todo" println
+    "    clear           Remove all completed todos" println
+    "    stats           Show statistics" println
+    "" println
+;
+
+: add_todo
+  [title] ->
+    "INSERT INTO todos (title) VALUES (?)" {title} db_exec_params drop
+    "Added: " title + println
+;
+
+: format_todo
+  [todo] ->
+    todo "id" get to_str >id
+    todo "done" get 1 == [" [x] "] [" [ ] "] if_else >check
+    todo "title" get >title
+    "  " id> + check> + title> + println
+;
+
+: list_todos
+  [] ->
+    "SELECT * FROM todos ORDER BY done ASC, id ASC" db_query >todos
+    todos> dup len 0 ==
+    [
+      drop "  No todos yet. Add one with: add <title>" println
+    ]
+    [
+      [format_todo] each
+    ]
+    if_else
+;
+
+: mark_done
+  [id_str] ->
+    id_str to_int >id
+    "UPDATE todos SET done = 1 WHERE id = ?" {id>} db_exec_params
+    0 == ["  No todo with that ID." println] ["  Marked as done!" println] if_else
+;
+
+: mark_undone
+  [id_str] ->
+    id_str to_int >id
+    "UPDATE todos SET done = 0 WHERE id = ?" {id>} db_exec_params
+    0 == ["  No todo with that ID." println] ["  Marked as not done." println] if_else
+;
+
+: remove_todo
+  [id_str] ->
+    id_str to_int >id
+    "DELETE FROM todos WHERE id = ?" {id>} db_exec_params
+    0 == ["  No todo with that ID." println] ["  Removed." println] if_else
+;
+
+: clear_done
+  [] ->
+    "DELETE FROM todos WHERE done = 1" db_exec
+    dup 0 ==
+    [drop "  Nothing to clear." println]
+    [to_str "  Cleared " swap + " completed todos." + println]
+    if_else
+;
+
+: show_stats
+  [] ->
+    "SELECT COUNT(*) as total FROM todos" db_query 0 nth "total" get
+    dup >total >total2
+    "SELECT COUNT(*) as done FROM todos WHERE done = 1" db_query 0 nth "done" get
+    dup >done >done2
+    "" println
+    "  Total:   " total> to_str + println
+    "  Done:    " done> to_str + println
+    "  Pending: " total2> done2> - to_str + println
+;
+
+
+-- === DISPATCH ===
+
+: run_cmd_with_arg
+  ["add", arg] -> arg add_todo
+  ["done", arg] -> arg mark_done
+  ["undo", arg] -> arg mark_undone
+  ["remove", arg] -> arg remove_todo
+  [_, _] -> show_help
+;
+
+: run_cmd
+  ["list"] -> list_todos
+  ["clear"] -> clear_done
+  ["stats"] -> show_stats
+  [_] -> show_help
+;
+
+-- === MAIN ===
+
+let all_args = args
+-- args: [binary, script, cmd, arg...]
+
+all_args len 3 <
+[
+  show_help
+]
+[
+  all_args 2 nth >cmd
+
+  all_args len 4 >=
+  [
+    all_args 3 nth >arg
+    cmd> arg> run_cmd_with_arg
+  ]
+  [
+    cmd> run_cmd
+  ]
+  if_else
+]
+if_else
+
+db_close

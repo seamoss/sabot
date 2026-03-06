@@ -1,0 +1,193 @@
+-- Sabo Benchmark Suite
+-- Usage: sabo tools/bench.sabo
+
+"lib/math.sabo" import
+"lib/list.sabo" import
+"lib/string.sabo" import
+"lib/functional.sabo" import
+
+-- Run a quotation and return elapsed ms
+: bench [name, q] ->
+  time_ms >t0
+  q ~
+  time_ms t0> - >elapsed
+  "  " name + ": " + elapsed> to_str + "ms" + println
+;
+
+"" println
+"=== Sabo Benchmarks ===" println
+"" println
+
+"--- Compute ---" println
+
+-- Recursive fibonacci (no memoization)
+"fib(25)" [25 fib drop] bench
+
+-- Recursive fibonacci with memoization
+"fib" memo
+"fib(25) memoized" [25 fib drop] bench
+"fib" memo_clear
+
+-- Factorial
+"factorial(12) x1000" [
+  [12 factorial drop] 1000 times
+] bench
+
+-- Deeply recursive (TCO)
+: tco_count
+  [0] -> 0
+  [n] -> n 1 - tco_count
+;
+"TCO depth 100k" [100000 tco_count drop] bench
+
+-- Pattern matching (multi-arm)
+: classify
+  [0] -> :zero
+  [n] where n > 0 -> :pos
+  [n] -> :neg
+;
+
+: classify_loop
+  [0] ->
+  [n] -> n classify drop n 1 - classify_loop
+;
+
+"pattern match x10k" [
+  10000 classify_loop
+] bench
+
+"" println
+"--- Collections ---" println
+
+"range(1,10000)" [1 10000 range drop] bench
+
+"map 10k items" [
+  1 10000 range [2 *] map_list drop
+] bench
+
+"filter 10k items" [
+  1 10000 range [2 % 0 ==] filter drop
+] bench
+
+"fold sum 10k" [
+  1 10000 range 0 [+] fold drop
+] bench
+
+"map+filter+fold 10k" [
+  1 10000 range [2 *] map_list [5000 <] filter 0 [+] fold drop
+] bench
+
+"sort 1000 items" [
+  1000 1 range sort drop
+] bench
+
+"" println
+"--- Strings ---" println
+
+"string concat x1000" [
+  "" ["x" +] 1000 times drop
+] bench
+
+"split+join x100" [
+  [
+    "the quick brown fox jumps over the lazy dog"
+    " " split " " join drop
+  ] 100 times
+] bench
+
+"" println
+"--- Regex ---" println
+
+"regex match x1000" [
+  ["hello123world" "\\d+" regex_match? drop] 1000 times
+] bench
+
+"regex replace x1000" [
+  ["foo  bar  baz" "\\s+" " " regex_replace drop] 1000 times
+] bench
+
+"regex find_all x1000" [
+  ["a1 b2 c3 d4 e5" "\\d+" regex_find_all drop] 1000 times
+] bench
+
+"" println
+"--- Concurrency ---" println
+
+-- Spawn/await: spawn 100 tasks and await each
+: spawn_await_n
+  [0] ->
+  [n] -> [42] spawn await drop n 1 - spawn_await_n
+;
+"spawn+await x100" [100 spawn_await_n] bench
+
+-- Typed channel send+recv
+: chan_send_n
+  [_, 0] ->
+  [ch, n] -> 42 ch ch_send ch n 1 - chan_send_n
+;
+
+: chan_recv_n
+  [_, 0] ->
+  [ch, n] -> ch ch_recv drop ch n 1 - chan_recv_n
+;
+
+: bench_chan [] ->
+  channel >bch
+  bch> dup >bch 1000 chan_send_n
+  bch> 1000 chan_recv_n
+;
+"typed chan 1k send+recv" [bench_chan] bench
+
+-- Spawn linked + await_all
+: spawn_linked_n
+  [0] -> {}
+  [n] -> n 1 - spawn_linked_n [n] spawn_linked swap cons
+;
+
+"spawn_linked+await_all x50" [
+  50 spawn_linked_n await_all drop
+] bench
+
+-- Producer/consumer via channel
+-- Producer/consumer via channel (using global for cross-VM access)
+let _pch = channel
+[_pch 1000 chan_send_n _pch ch_close :done] spawn drop
+"producer/consumer 1k msgs" [
+  10 sleep_ms
+  _pch 1000 chan_recv_n
+] bench
+
+"" println
+"--- Map operations ---" println
+
+: map_build
+  [m, 0] -> m
+  [m, n] -> m "k" n to_str + n set n 1 - map_build
+;
+
+"map build 1k entries" [
+  #{} 1000 map_build drop
+] bench
+
+: map_read_same
+  [_, 0] ->
+  [m, n] -> m "k500" get drop m n 1 - map_read_same
+;
+
+"map read same key x1000" [
+  #{} 1000 map_build
+  1000 map_read_same
+] bench
+
+: map_read_vary
+  [_, 0] ->
+  [m, n] -> m "k" n to_str + get drop m n 1 - map_read_vary
+;
+
+"map read vary key x1000" [
+  #{} 1000 map_build
+  1000 map_read_vary
+] bench
+
+"" println
+"Done." println

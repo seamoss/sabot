@@ -1,0 +1,15 @@
+-- Sabo REPL startup file
+-- Loaded automatically when the REPL starts.
+-- Place in project root or ~/.saborc
+
+-- Load standard library
+"lib/math.sabo" import
+"lib/list.sabo" import
+"lib/string.sabo" import
+"lib/functional.sabo" import
+"lib/map.sabo" import
+
+-- Handy REPL aliases
+: pp  [x] -> x println ;
+: clr [] -> depth [drop] times ;
+: show_stack [] -> depth println ;

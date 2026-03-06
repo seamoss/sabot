@@ -1,0 +1,33 @@
+-- =============================================
+-- Sabo Tier 3: Stack Traces & Debugging
+-- =============================================
+
+-- 1. Stack depth
+"-- Stack depth --" println
+1 2 3
+"depth = " print depth println
+drop drop drop
+
+-- 2. Backtrace inside a word
+: inner
+  [] -> "Inside 'inner', backtrace:" println backtrace println
+;
+
+: outer
+  [] -> inner
+;
+
+"" println
+"-- Backtrace --" println
+outer
+
+-- 3. Try/catch with useful errors
+"" println
+"-- Error handling --" println
+[1 0 /] try println
+[unknown_word_xyz] try println
+
+-- 4. Hot reload: load another file
+"" println
+"-- Hot reload (load) --" println
+"examples/hello.sabo" load

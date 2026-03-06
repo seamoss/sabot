@@ -1,0 +1,70 @@
+-- Standard Library: String
+-- String manipulation utilities.
+
+-- Repeat a string n times
+: str_repeat
+  [_, 0] -> ""
+  [s, n] -> s s n 1 - str_repeat +
+;
+
+-- Pad a string on the left to reach target length
+: pad_left
+  [s, width, fill] -> s len width >=
+    [s]
+    [fill width s len - str_repeat s +]
+    if_else
+;
+
+-- Pad a string on the right to reach target length
+: pad_right
+  [s, width, fill] -> s len width >=
+    [s]
+    [s fill width s len - str_repeat +]
+    if_else
+;
+
+-- Center a string within given width
+: center
+  [s, width, fill] -> s len width >=
+    [s]
+    [
+      width s len - 2 / >pad
+      fill pad> str_repeat >left_pad
+      fill width s len - pad> - str_repeat >right_pad
+      left_pad> s + right_pad> +
+    ]
+    if_else
+;
+
+-- Split string into words (split on spaces)
+: split_words [s] -> s " " split ;
+
+-- Split string into lines
+: lines [s] -> s "\n" split ;
+
+-- Unwords: join with spaces
+: join_words [lst] -> lst " " join ;
+
+-- Unlines: join with newlines
+: unlines [lst] -> lst "\n" join ;
+
+-- Check if string is empty
+: empty? [s] -> s len 0 == ;
+
+-- Check if string is blank (empty or all spaces)
+: blank? [s] -> s trim len 0 == ;
+
+-- Surround a string with a delimiter
+: surround [s, delim] -> delim s + delim + ;
+
+-- Quote a string
+: quote [s] -> s "\"" surround ;
+
+-- Wrap in parens
+: parens [s] -> "(" s + ")" + ;
+
+-- Wrap in brackets
+: brackets [s] -> "[" s + "]" + ;
+
+-- Wrap in braces (display, not Sabo list syntax)
+: braces [s] -> "{" s + "}" + ;

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sabo Server</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 20px; background: #1a1a2e; color: #e0e0e0; }
+    h1 { color: #e94560; }
+    a { color: #0f3460; background: #e94560; padding: 6px 14px; border-radius: 4px; text-decoration: none; display: inline-block; margin: 4px 0; }
+    a:hover { background: #c73450; }
+    pre { background: #16213e; padding: 16px; border-radius: 8px; overflow-x: auto; }
+    code { color: #0ff; }
+    .endpoint { margin: 12px 0; }
+  </style>
+</head>
+<body>
+  <h1>Sabo HTTP Server</h1>
+  <p>A web server written in a stack-based language. Yes, really.</p>
+
+  <h2>Try these endpoints:</h2>
+
+  <div class="endpoint"><a href="/hello">/hello</a> — plain text greeting</div>
+  <div class="endpoint"><a href="/greet/world">/greet/:name</a> — parameterized greeting</div>
+  <div class="endpoint"><a href="/api/echo?msg=hello&from=sabo">/api/echo?msg=...&from=...</a> — echo query params as JSON</div>
+  <div class="endpoint"><a href="/api/time">/api/time</a> — current server time</div>
+  <div class="endpoint"><a href="/api/fib/10">/api/fib/:n</a> — compute fibonacci</div>
+  <div class="endpoint"><a href="/api/stats">/api/stats</a> — server stats (request count)</div>
+
+  <h2>POST endpoints:</h2>
+  <pre><code>curl -X POST -d '{"text":"hello world"}' localhost:8080/api/reverse</code></pre>
+  <pre><code>curl -X POST -d '{"items":[3,1,4,1,5]}' localhost:8080/api/sort</code></pre>
+</body>
+</html>

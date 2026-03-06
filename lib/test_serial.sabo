@@ -1,0 +1,158 @@
+-- Serialization tests: JSON, YAML, TOML, Protobuf
+
+-- ============================================================
+-- JSON
+-- ============================================================
+
+-- json_parse: primitives
+"42" json_parse 42 assert_eq
+"3.14" json_parse 3.14 assert_eq
+"true" json_parse true assert_eq
+"false" json_parse false assert_eq
+
+-- json_parse: null
+"null" json_parse :null assert_eq
+
+-- json_parse: array
+"[1, 2, 3]" json_parse {1, 2, 3} assert_eq
+
+-- json_parse: object (build JSON string via encode, then parse back)
+#{"name" => "sabo", "version" => 4} json_encode json_parse
+let parsed_obj =
+parsed_obj "name" get "sabo" assert_eq
+parsed_obj "version" get 4 assert_eq
+
+-- json_encode: primitives
+42 json_encode "42" assert_eq
+true json_encode "true" assert_eq
+
+-- json_encode: list
+{1, 2, 3} json_encode "[1,2,3]" assert_eq
+
+-- json_encode: map roundtrip
+#{"x" => 10, "y" => 20} json_encode json_parse
+let rt_map =
+rt_map "x" get 10 assert_eq
+rt_map "y" get 20 assert_eq
+
+-- json_pretty produces multi-line output
+#{"a" => 1} json_pretty "\n" contains assert
+
+"JSON tests passed!" println
+
+-- ============================================================
+-- YAML
+-- ============================================================
+
+-- yaml_parse: scalars
+"42" yaml_parse 42 assert_eq
+"3.14" yaml_parse 3.14 assert_eq
+"true" yaml_parse true assert_eq
+"hello" yaml_parse "hello" assert_eq
+
+-- yaml_parse: sequence
+"- 1\n- 2\n- 3" yaml_parse {1, 2, 3} assert_eq
+
+-- yaml_parse: mapping
+"name: sabo\nversion: 4" yaml_parse
+let yaml_obj =
+yaml_obj "name" get "sabo" assert_eq
+yaml_obj "version" get 4 assert_eq
+
+-- yaml_encode: roundtrip
+#{"color" => "red", "count" => 5} yaml_encode yaml_parse
+let yaml_rt =
+yaml_rt "color" get "red" assert_eq
+yaml_rt "count" get 5 assert_eq
+
+"YAML tests passed!" println
+
+-- ============================================================
+-- TOML
+-- ============================================================
+
+-- toml_parse: basic table
+"name = \"sabo\"\nversion = 4" toml_parse
+let toml_obj =
+toml_obj "name" get "sabo" assert_eq
+toml_obj "version" get 4 assert_eq
+
+-- toml_parse: nested tables
+"[server]\nhost = \"localhost\"\nport = 8080" toml_parse
+let toml_nested =
+toml_nested "server" get "host" get "localhost" assert_eq
+toml_nested "server" get "port" get 8080 assert_eq
+
+-- toml_parse: arrays
+"values = [1, 2, 3]" toml_parse "values" get {1, 2, 3} assert_eq
+
+-- toml_encode: roundtrip
+#{"key" => "value", "num" => 42} toml_encode toml_parse
+let toml_rt =
+toml_rt "key" get "value" assert_eq
+toml_rt "num" get 42 assert_eq
+
+"TOML tests passed!" println
+
+-- ============================================================
+-- Protobuf-style binary encoding
+-- ============================================================
+
+-- proto roundtrip: int
+42 proto_encode proto_decode 42 assert_eq
+
+-- proto roundtrip: float
+3.14 proto_encode proto_decode 3.14 assert_eq
+
+-- proto roundtrip: string
+"hello world" proto_encode proto_decode "hello world" assert_eq
+
+-- proto roundtrip: bool
+true proto_encode proto_decode true assert_eq
+false proto_encode proto_decode false assert_eq
+
+-- proto roundtrip: null
+:null proto_encode proto_decode :null assert_eq
+
+-- proto roundtrip: symbol
+:foo proto_encode proto_decode :foo assert_eq
+
+-- proto roundtrip: list
+{1, "two", true} proto_encode proto_decode
+let proto_list =
+proto_list 0 nth 1 assert_eq
+proto_list 1 nth "two" assert_eq
+proto_list 2 nth true assert_eq
+
+-- proto roundtrip: nested map
+#{"name" => "sabo", "version" => 4} proto_encode proto_decode
+let proto_map =
+proto_map "name" get "sabo" assert_eq
+proto_map "version" get 4 assert_eq
+
+-- proto_encode produces a list of ints (bytes)
+42 proto_encode type_of "list" assert_eq
+42 proto_encode len 9 assert_eq -- 1 tag + 8 bytes for i64
+
+"Protobuf tests passed!" println
+
+-- ============================================================
+-- Cross-format roundtrips
+-- ============================================================
+
+-- JSON -> YAML -> back
+#{"lang" => "sabo", "fast" => true} json_encode
+json_parse yaml_encode yaml_parse
+let cross1 =
+cross1 "lang" get "sabo" assert_eq
+cross1 "fast" get true assert_eq
+
+-- JSON -> TOML -> back
+#{"app" => "test", "port" => 3000} json_encode
+json_parse toml_encode toml_parse
+let cross2 =
+cross2 "app" get "test" assert_eq
+cross2 "port" get 3000 assert_eq
+
+"Cross-format tests passed!" println
+"All serialization tests passed!" println

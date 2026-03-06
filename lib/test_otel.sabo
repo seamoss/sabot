@@ -1,0 +1,206 @@
+-- OpenTelemetry-style observability tests
+
+-- Suppress log output for tests
+:error log_level
+
+-- ============================================================
+-- Tracing
+-- ============================================================
+
+-- span_start returns an id, span_end closes it
+"test-op" span_start
+let span_id =
+span_id 0 > assert
+span_end
+
+-- spans_dump returns completed spans
+spans_dump len 1 assert_eq
+spans_dump 0 nth "name" get "test-op" assert_eq
+spans_dump 0 nth "status" get :ok assert_eq
+spans_dump 0 nth "parent_id" get :null assert_eq
+
+-- nested spans get parent_id
+spans_reset
+"parent" span_start
+let parent_id =
+"child" span_start drop
+span_end
+span_end
+spans_dump len 2 assert_eq
+spans_dump 1 nth "parent_id" get parent_id assert_eq
+
+-- span_attr adds attributes to current span
+spans_reset
+"with-attrs" span_start drop
+"http.method" "GET" span_attr
+"http.status" 200 span_attr
+span_end
+spans_dump 0 nth "attributes" get "http.method" get "GET" assert_eq
+spans_dump 0 nth "attributes" get "http.status" get 200 assert_eq
+
+-- span_event adds events
+spans_reset
+"with-events" span_start drop
+"cache-miss" span_event
+span_end
+spans_dump 0 nth "events" get len 1 assert_eq
+spans_dump 0 nth "events" get 0 nth "name" get "cache-miss" assert_eq
+
+-- span_error marks span as error
+spans_reset
+"failing-op" span_start drop
+"something broke" span_error
+span_end
+spans_dump 0 nth "status" get "error: something broke" assert_eq
+
+-- scoped span auto-starts and auto-ends
+spans_reset
+"auto-span" [42] span
+42 assert_eq
+spans_dump len 1 assert_eq
+spans_dump 0 nth "name" get "auto-span" assert_eq
+spans_dump 0 nth "status" get :ok assert_eq
+
+-- span_error marks error status (already tested above)
+-- scoped span on error: tested via span_error
+
+-- duration_ms is present
+spans_reset
+"timed" span_start drop
+span_end
+spans_dump 0 nth "duration_ms" get type_of "int" assert_eq
+
+"Tracing tests passed!" println
+
+-- ============================================================
+-- Metrics
+-- ============================================================
+
+metrics_reset
+
+-- counter_inc
+"requests" counter_inc
+"requests" counter_inc
+"requests" counter_inc
+metrics_dump "requests" get "value" get 3.0 assert_eq
+metrics_dump "requests" get "type" get :counter assert_eq
+
+-- counter_add
+5 "requests" counter_add
+metrics_dump "requests" get "value" get 8.0 assert_eq
+
+-- gauge_set
+42 "active_conns" gauge_set
+metrics_dump "active_conns" get "value" get 42.0 assert_eq
+metrics_dump "active_conns" get "type" get :gauge assert_eq
+
+-- gauge_inc / gauge_dec
+"active_conns" gauge_inc
+metrics_dump "active_conns" get "value" get 43.0 assert_eq
+"active_conns" gauge_dec
+"active_conns" gauge_dec
+metrics_dump "active_conns" get "value" get 41.0 assert_eq
+
+-- histogram_record
+100 "latency_ms" histogram_record
+200 "latency_ms" histogram_record
+300 "latency_ms" histogram_record
+metrics_dump "latency_ms" get
+let hist =
+hist "type" get :histogram assert_eq
+hist "count" get 3 assert_eq
+hist "sum" get 600.0 assert_eq
+hist "min" get 100.0 assert_eq
+hist "max" get 300.0 assert_eq
+hist "avg" get 200.0 assert_eq
+
+-- metrics_reset clears everything
+metrics_reset
+metrics_dump keys len 0 assert_eq
+
+"Metrics tests passed!" println
+
+-- ============================================================
+-- Logging
+-- ============================================================
+
+logs_reset
+
+-- log levels
+:debug log_level  -- enable all levels for testing
+"debug msg" log_debug
+"info msg" log_info
+"warn msg" log_warn
+"error msg" log_error
+
+logs_dump len 4 assert_eq
+logs_dump 0 nth "level" get :debug assert_eq
+logs_dump 0 nth "message" get "debug msg" assert_eq
+logs_dump 1 nth "level" get :info assert_eq
+logs_dump 2 nth "level" get :warn assert_eq
+logs_dump 3 nth "level" get :error assert_eq
+
+-- log_level filters
+logs_reset
+:warn log_level
+"should skip" log_debug
+"should skip" log_info
+"should show" log_warn
+"should show" log_error
+logs_dump len 2 assert_eq
+logs_dump 0 nth "level" get :warn assert_eq
+
+-- log_with structured fields
+logs_reset
+:debug log_level
+"request failed" #{"status" => 500, "path" => "/api"} :error log_with
+logs_dump 0 nth "fields" get "status" get 500 assert_eq
+logs_dump 0 nth "fields" get "path" get "/api" assert_eq
+
+-- logs include span context
+logs_reset
+spans_reset
+"my-span" span_start drop
+"inside span" log_info
+span_end
+logs_dump 0 nth "span_id" get type_of "int" assert_eq
+
+-- logs outside spans have null span_id
+logs_reset
+"no span" log_info
+logs_dump 0 nth "span_id" get :null assert_eq
+
+-- timestamp is present
+logs_dump 0 nth "timestamp_ms" get type_of "int" assert_eq
+
+"Logging tests passed!" println
+
+-- ============================================================
+-- Combined otel_dump / otel_reset
+-- ============================================================
+
+otel_reset
+"op" span_start drop
+span_end
+"hits" counter_inc
+"hello" log_info
+
+otel_dump
+let dump =
+dump "spans" get type_of "list" assert_eq
+dump "metrics" get type_of "map" assert_eq
+dump "logs" get type_of "list" assert_eq
+dump "spans" get len 1 assert_eq
+dump "logs" get len 1 assert_eq
+
+otel_reset
+otel_dump
+let dump2 =
+dump2 type_of "map" assert_eq
+dump2 keys len 3 assert_eq
+dump2 "spans" get type_of "list" assert_eq
+dump2 "spans" get len 0 assert_eq
+dump2 "logs" get len 0 assert_eq
+
+"Combined otel tests passed!" println
+"All observability tests passed!" println

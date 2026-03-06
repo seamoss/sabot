@@ -1,0 +1,174 @@
+-- Test: Structured Concurrency Features
+
+-- ========== Typed Channels ==========
+
+-- Basic channel send/recv
+channel
+let ch = dup
+42 ch ch_send
+ch ch_recv
+42 == assert
+
+-- Multiple values through channel
+channel
+let ch2 = dup
+1 ch2 ch_send
+2 ch2 ch_send
+3 ch2 ch_send
+ch2 ch_recv 1 == assert
+ch2 ch_recv 2 == assert
+ch2 ch_recv 3 == assert
+
+-- ch_try_recv on empty channel
+channel
+let ch3 = dup
+ch3 ch_try_recv
+:empty == assert
+
+-- ch_try_recv with value
+channel
+let ch4 = dup
+99 ch4 ch_send
+ch4 ch_try_recv
+dup head :ok == assert
+tail head 99 == assert
+
+-- ch_close prevents further sends
+channel
+let ch5 = dup
+ch5 ch_close
+[77 ch5 ch_send] try
+dup head :error == assert
+drop
+
+-- ch_recv on closed empty channel returns :closed
+channel
+let ch6 = dup
+ch6 ch_close
+ch6 ch_recv
+:closed == assert
+
+-- ch_try_recv on closed channel returns :closed
+channel
+let ch7 = dup
+ch7 ch_close
+ch7 ch_try_recv
+:closed == assert
+
+"Typed channel tests passed!" println
+
+-- ========== spawn_linked + await ==========
+
+-- spawn_linked returns task id
+[42] spawn_linked
+dup type_of "int" == assert
+await
+42 == assert
+
+-- spawn_linked with computation
+[10 20 +] spawn_linked await
+30 == assert
+
+"spawn_linked tests passed!" println
+
+-- ========== await_all ==========
+
+-- Wait for multiple tasks
+[10] spawn_linked
+let t1 = dup
+[20] spawn_linked
+let t2 = dup
+[30] spawn_linked
+let t3 = dup
+{t1, t2, t3} await_all
+
+-- Result is list of {:ok, val} tuples
+dup len 3 == assert
+
+-- Each result should be {:ok, N}
+dup 0 nth head :ok == assert
+dup 0 nth tail head 10 == assert
+dup 1 nth head :ok == assert
+dup 1 nth tail head 20 == assert
+2 nth head :ok == assert
+
+"await_all tests passed!" println
+
+-- ========== await_any ==========
+
+-- First to finish wins (fast task vs slow task)
+[42] spawn_linked
+let ta = dup
+[200 sleep_ms 99] spawn_linked
+let tb = dup
+{ta, tb} await_any
+
+-- Result is {task_id, {:ok, value}}
+dup tail head head :ok == assert
+drop
+
+"await_any tests passed!" println
+
+-- ========== Cancellation ==========
+
+-- cancelled? is false by default
+cancelled? false == assert
+
+"Cancellation tests passed!" println
+
+-- ========== timeout ==========
+
+-- Fast operation completes within timeout
+[42] 1000 timeout
+dup head :ok == assert
+tail head 42 == assert
+
+-- Slow operation times out
+[500 sleep_ms 42] 10 timeout
+dup head :error == assert
+tail head :timeout == assert
+
+"Timeout tests passed!" println
+
+-- ========== select ==========
+
+-- select picks first available channel
+channel
+let sch1 = dup
+channel
+let sch2 = dup
+"hello" sch1 ch_send
+{sch1, sch2} select
+
+-- Result is {channel_id, value}
+tail head "hello" == assert
+drop
+
+"Select tests passed!" println
+
+-- ========== Channel + spawn integration ==========
+
+-- Producer/consumer pattern
+channel
+let pch = dup
+
+-- Spawn producer that sends 3 values then closes
+[1 pch ch_send 2 pch ch_send 3 pch ch_send pch ch_close :done] spawn_linked
+let producer = dup
+
+-- Small delay to let producer run
+10 sleep_ms
+
+-- Consume all values
+pch ch_recv 1 == assert
+pch ch_recv 2 == assert
+pch ch_recv 3 == assert
+pch ch_recv :closed == assert
+
+producer await :done == assert
+
+"Producer/consumer tests passed!" println
+
+-- ==========
+
+"All structured concurrency tests passed!" println

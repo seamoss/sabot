@@ -1,0 +1,33 @@
+-- Regex builtin tests
+
+-- regex_match?
+"hello123" "\\d+" regex_match? true assert_eq
+"hello" "\\d+" regex_match? false assert_eq
+"foo@bar.com" "^\\w+@\\w+\\.\\w+$" regex_match? true assert_eq
+
+-- regex_find
+"hello 42 world" "\\d+" regex_find {:ok, "42"} assert_eq
+"hello world" "\\d+" regex_find :none assert_eq
+
+-- regex_find_all
+"a1 b2 c3" "\\d+" regex_find_all {"1", "2", "3"} assert_eq
+"no digits" "\\d+" regex_find_all {} assert_eq
+
+-- regex_replace
+"hello 123 world 456" "\\d+" "NUM" regex_replace "hello NUM world NUM" assert_eq
+"foo  bar   baz" "\\s+" " " regex_replace "foo bar baz" assert_eq
+
+-- regex_split
+"one,two,,three" "," regex_split {"one", "two", "", "three"} assert_eq
+"a1b2c3d" "\\d" regex_split {"a", "b", "c", "d"} assert_eq
+
+-- regex_captures
+"2026-03-06" "(\\d\{4\})-(\\d\{2\})-(\\d\{2\})" regex_captures
+  dup 0 nth "2026-03-06" assert_eq  -- full match
+  dup 1 nth "2026" assert_eq        -- group 1
+  dup 2 nth "03" assert_eq          -- group 2
+  3 nth "06" assert_eq              -- group 3
+
+"no match" "(\\d+)" regex_captures :none assert_eq
+
+"Regex tests passed!" println

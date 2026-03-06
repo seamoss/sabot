@@ -1,0 +1,112 @@
+-- =============================================
+--  B U D G E T   T R A C K E R
+--  Interactive budget tool using reactive cells
+--  Usage: sabo programs/budget.sabo
+-- =============================================
+
+-- === REACTIVE STATE ===
+0.0 "income" cell
+{} "expenses" cell
+0.0 "total_spent" cell
+0.0 "balance" cell
+
+-- Recompute total_spent when expenses change
+[expenses 0.0 [+] fold] "total_spent" computed
+
+-- Recompute balance
+[income total_spent -] "balance" computed
+
+-- Alert when overspent
+[balance 0.0 <] ["  !! WARNING: You are over budget! !!" println] when
+
+-- === HELPERS ===
+
+: show_status
+  [] ->
+    "" println
+    "================================" println
+    "  Income:      $" print income println
+    "  Total spent: $" print total_spent println
+    "  Balance:     $" print balance println
+    "================================" println
+;
+
+: show_expenses
+  [] ->
+    expenses empty
+    ["  No expenses yet." println]
+    [
+      "" println
+      "  --- Expenses ---" println
+      0 "idx" cell
+      expenses [
+        "  " print
+        idx 1 + to_str print ". $" print println
+        idx 1 + "idx" set_cell
+      ] each
+    ]
+    if_else
+;
+
+: add_expense
+  [amount] ->
+    expenses amount append "expenses" set_cell
+    "  Added: $" print amount println
+    show_status
+;
+
+: set_income
+  [amount] ->
+    amount "income" set_cell
+    "  Income set to $" print amount println
+    show_status
+;
+
+-- === MAIN LOOP ===
+
+"" println
+"================================" println
+"  B U D G E T   T R A C K E R" println
+"================================" println
+"" println
+"Commands:" println
+"  income <amount>  - Set monthly income" println
+"  spend <amount>   - Add an expense" println
+"  status           - Show current budget" println
+"  list             - List all expenses" println
+"  quit             - Exit" println
+
+show_status
+
+: handle_cmd
+  ["income"] ->
+    "> amount: " input trim to_float set_income
+  ["spend"] ->
+    "> amount: " input trim to_float add_expense
+  ["status"] -> show_status
+  ["list"] -> show_expenses
+  ["quit"] -> true "done" cell
+  ["help"] ->
+    "  income / spend / status / list / quit" println
+  [_] -> "  Unknown command. Type 'help'." println
+;
+
+false "done" cell
+
+: main_loop
+  [] ->
+    done not
+    [
+      "" println
+      "> " input trim lowercase
+      dup empty not
+      [handle_cmd]
+      [drop]
+      if_else
+      main_loop
+    ]
+    []
+    if_else
+;
+
+[main_loop] try drop

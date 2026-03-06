@@ -1,0 +1,48 @@
+-- =============================================
+-- Sabo Tier 2: I/O & the Real World
+-- =============================================
+
+-- 1. File I/O
+"Hello from Sabo!\nLine 2\nLine 3" "/tmp/sabo_test.txt" write_file
+"/tmp/sabo_test.txt" file_exists println
+
+"/tmp/sabo_test.txt" read_file println
+"/tmp/sabo_test.txt" read_lines println
+
+"\nLine 4" "/tmp/sabo_test.txt" append_file
+"/tmp/sabo_test.txt" read_lines len println
+
+-- 2. Shell execution
+"echo 'hello from shell'" exec println
+"ls /tmp/sabo_test.txt" exec_full println
+
+-- 3. Directory listing
+"." ls println
+
+-- 4. Environment variables
+"HOME" env_get println
+"USER" env_get println
+
+-- 5. HTTP (fetch a small JSON endpoint)
+"https://httpbin.org/get" http_get json_parse "headers" get println
+
+-- 6. JSON
+let data = #{"name" => "Sabo", "version" => 2, "features" => {"io", "http", "json"}}
+data json_encode println
+
+-- Parse it back
+data json_encode json_parse println
+
+-- 7. Time
+let start = time_ms
+-- Do some work
+1 1000000 range 0 [+] fold drop
+let end = time_ms
+let elapsed = end start -
+"Summed 1M numbers in {elapsed}ms" println
+
+-- 8. Command args
+args println
+
+-- Cleanup
+"rm /tmp/sabo_test.txt" exec drop

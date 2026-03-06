@@ -1,0 +1,22 @@
+-- =============================================
+-- Sabo Tier 4: Module System
+-- =============================================
+
+"-- Importing math module --" println
+"examples/lib/math.sabo" import
+
+-- Use unqualified names
+5 square println
+3 cube println
+-42 abs println
+
+-- Use qualified names (module.word)
+7 math.square println
+4 math.cube println
+
+-- Assertions
+5 square 25 assert_eq
+3 cube 27 assert_eq
+-7 abs 7 assert_eq
+
+"Module tests passed!" println

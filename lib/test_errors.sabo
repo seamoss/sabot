@@ -1,0 +1,35 @@
+-- Structured error tests
+
+-- throw with try catches the thrown value
+[:not_found throw] try {:error, :not_found} assert_eq
+
+-- throw with any value
+[42 throw] try {:error, 42} assert_eq
+
+-- throw with a map
+[#{"code" => 404, "msg" => "not found"} throw] try
+  dup 0 nth :error assert_eq
+  1 nth "msg" get "not found" assert_eq
+
+-- error builtin creates structured error tuple
+["file missing" :io_error error] try
+  dup 0 nth :error assert_eq
+  dup 1 nth 0 nth :error assert_eq  -- inner tuple starts with :error
+  dup 1 nth 1 nth :io_error assert_eq
+  1 nth 2 nth "file missing" assert_eq
+
+-- regular errors still work
+[1 0 /] try
+  dup 0 nth :error assert_eq
+  1 nth type_of "string" assert_eq
+
+-- nested try
+[[[:deep throw] try] try] try
+  dup 0 nth :ok assert_eq      -- outer try succeeds
+  1 nth 0 nth :ok assert_eq    -- middle try succeeds
+  -- innermost try caught the throw
+
+-- throw without try propagates as normal error
+-- (can't test this without crashing, so skip)
+
+"Error tests passed!" println

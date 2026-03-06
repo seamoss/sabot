@@ -1,0 +1,81 @@
+-- Standard Library: Math
+-- Extended math operations beyond basic arithmetic.
+
+-- Basics
+: square [n] -> n n * ;
+: cube   [n] -> n n * n * ;
+
+: abs
+  [n] where n < 0 -> 0 n -
+  [n] -> n
+;
+
+: negate [n] -> 0 n - ;
+
+: sign
+  [n] where n > 0 -> 1
+  [n] where n < 0 -> -1
+  [_] -> 0
+;
+
+-- Min / Max / Clamp
+: min [a, b] where a <= b -> a  [a, b] -> b ;
+: max [a, b] where a >= b -> a  [a, b] -> b ;
+
+: clamp
+  [val, lo, hi] where val < lo -> lo
+  [val, lo, hi] where val > hi -> hi
+  [val, lo, hi] -> val
+;
+
+-- Power (integer exponent, non-negative)
+: pow
+  [base, 0] -> 1
+  [base, exp] -> base base exp 1 - pow *
+;
+
+-- GCD / LCM (Euclidean algorithm)
+: gcd
+  [a, 0] -> a abs
+  [a, b] -> b a b % gcd
+;
+
+: lcm
+  [0, _] -> 0
+  [_, 0] -> 0
+  [a, b] -> a b * abs a b gcd /
+;
+
+-- Summation and product over lists
+: sum
+  [lst] -> lst 0 [+] fold
+;
+
+: product
+  [lst] -> lst 1 [*] fold
+;
+
+-- Average (integer division for now)
+: average
+  [lst] -> lst sum lst len /
+;
+
+-- Factorial
+: factorial
+  [0] -> 1
+  [n] -> n n 1 - factorial *
+;
+
+-- Fibonacci (returns nth fib, 0-indexed)
+: fib
+  [0] -> 0
+  [1] -> 1
+  [n] -> n 1 - fib n 2 - fib +
+;
+
+-- Even / Odd
+: even? [n] -> n 2 % 0 == ;
+: odd?  [n] -> n 2 % 0 != ;
+
+-- Divisible
+: divisible? [n, d] -> n d % 0 == ;

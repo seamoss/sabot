@@ -1,0 +1,28 @@
+-- List operations with pattern matching
+
+: sum
+  {[]} -> 0
+  {[h | t]} -> h t sum +
+;
+
+: map
+  {[]} -> {}
+  {[h | t]} -> h [2 *] ~ t map cons
+;
+
+-- Sum a list
+{1, 2, 3, 4, 5} sum println
+
+-- Fibonacci with pattern matching
+: fib
+  [0] -> 0
+  [1] -> 1
+  [n] -> n 1 - fib n 2 - fib +
+;
+
+0 fib println
+1 fib println
+10 fib println
+
+-- String concat
+"hello" " " + "world" + println
