@@ -63,7 +63,13 @@ Sabo is an expressive scripting language that fuses the compositional power of F
 - [Project Structure](#project-structure)
 - [Architecture](#architecture)
 - [Documentation](#documentation)
+- [Development Workflow](#development-workflow)
+  - [Branching Strategy](#branching-strategy)
+  - [Version Management](#version-management)
+  - [Makefile Targets](#makefile-targets)
+  - [Release Pipeline](#release-pipeline)
 - [Dependencies](#dependencies)
+- [License](#license)
 
 ---
 
@@ -1089,6 +1095,115 @@ All concurrency uses Rust's `std::thread` with `Arc<Mutex<...>>` for shared stat
 
 ---
 
+## Development Workflow
+
+### Branching Strategy
+
+Sabo uses a two-branch model:
+
+```
+dev (active development)
+ │
+ ├── feature work, bug fixes, version bumps
+ │
+ └── Pull Request ──▶ main (stable, tagged releases)
+                        │
+                        └── auto-tag ──▶ release builds
+```
+
+- **`dev`** -- all day-to-day work happens here. Push freely.
+- **`main`** -- stable branch. Code arrives via pull request from `dev`.
+- When a PR merges to `main`, the **auto-tag** workflow reads the `VERSION` file and creates an annotated git tag (e.g., `v0.4.0`) if one doesn't already exist.
+- Tag creation triggers the **release** workflow, which cross-compiles binaries and publishes a GitHub Release.
+
+### Version Management
+
+The `VERSION` file at the project root is the **single source of truth** for the version number. A sync script propagates it to all other files:
+
+```bash
+# Show current version
+make version
+
+# Bump to a new version (updates VERSION, Cargo.toml, main.rs, README, LANGUAGE.md)
+make bump V=0.5.0
+
+# Verify all files are in sync (used by CI)
+make version-check
+```
+
+Files kept in sync:
+| File | What gets updated |
+|------|-------------------|
+| `VERSION` | Raw version string (e.g., `0.4.0`) |
+| `Cargo.toml` | `version = "0.4.0"` |
+| `src/main.rs` | `Sabo v0.4.0` banner |
+| `README.md` | `Sabo v0.4.0` references |
+| `docs/LANGUAGE.md` | `v0.4.0` in the title |
+
+### Makefile Targets
+
+The `Makefile` provides shortcuts for every common task:
+
+```bash
+make help          # show all targets with descriptions
+```
+
+| Category | Targets |
+|----------|---------|
+| **Build** | `build`, `release`, `clean` |
+| **Test** | `test` (all), `test-rust`, `test-sabo` |
+| **Lint** | `fmt`, `fmt-check`, `clippy`, `lint` (all lints) |
+| **Format** | `fmt-sabo` (format all .sabo files) |
+| **Tools** | `bench`, `profile FILE=...`, `repl` |
+| **Version** | `version`, `version-check`, `bump V=x.y.z` |
+| **Release** | `check` (full pre-release), `release-dry-run` |
+| **Install** | `install`, `uninstall` |
+
+### Release Pipeline
+
+Releases are fully automated via three GitHub Actions workflows:
+
+**1. CI** (`.github/workflows/ci.yml`) -- runs on every push to `dev`/`main` and every PR to `main`:
+- Build and test on **Linux, macOS, and Windows**
+- `cargo fmt --check` and `cargo clippy -- -D warnings`
+- Version sync verification (`scripts/version-sync.sh --check`)
+
+**2. Auto-Tag** (`.github/workflows/auto-tag.yml`) -- runs when code lands on `main`:
+- Reads the `VERSION` file
+- Creates an annotated git tag (`v0.4.0`) if it doesn't already exist
+- The new tag triggers the release workflow
+
+**3. Release** (`.github/workflows/release.yml`) -- runs when a `v*` tag is pushed:
+- Cross-compiles for **5 targets**:
+  - `x86_64-unknown-linux-gnu`
+  - `aarch64-unknown-linux-gnu`
+  - `x86_64-apple-darwin`
+  - `aarch64-apple-darwin`
+  - `x86_64-pc-windows-msvc`
+- Packages each binary with README, LICENSE, CHANGELOG, standard library, and docs
+- Generates SHA-256 checksums
+- Creates a GitHub Release with all assets and changelog excerpt
+
+**Typical release flow:**
+
+```bash
+# 1. Bump version on dev
+make bump V=0.5.0
+
+# 2. Update CHANGELOG.md with release notes
+
+# 3. Commit and push
+git add -A && git commit -m "chore: bump version to v0.5.0"
+git push origin dev
+
+# 4. Open a PR from dev -> main, review, merge
+
+# 5. Everything else is automatic:
+#    main push -> auto-tag -> release builds -> GitHub Release
+```
+
+---
+
 ## Dependencies
 
 Sabo uses a minimal set of Rust crates:
@@ -1103,3 +1218,9 @@ Sabo uses a minimal set of Rust crates:
 | `toml`       | 0.8     | TOML serialization/deserialization            |
 
 Everything else -- the lexer, parser, compiler, VM, reactive system, concurrency, binary encoding, HTTP server, formatter, profiler, and test runner -- is implemented from scratch.
+
+---
+
+## License
+
+Sabo is licensed under the [GNU General Public License v3.0](LICENSE).
