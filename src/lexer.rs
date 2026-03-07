@@ -282,11 +282,11 @@ impl Lexer {
     }
 
     fn skip_comment(&mut self) {
-        if !self.at_end() && self.peek() == '-' {
-            if self.pos + 1 < self.input.len() && self.input[self.pos + 1] == '-' {
-                while !self.at_end() && self.peek() != '\n' {
-                    self.advance();
-                }
+        if !self.at_end() && self.peek() == '-'
+            && self.pos + 1 < self.input.len() && self.input[self.pos + 1] == '-'
+        {
+            while !self.at_end() && self.peek() != '\n' {
+                self.advance();
             }
         }
     }

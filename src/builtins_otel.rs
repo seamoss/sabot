@@ -1,6 +1,5 @@
-/// OpenTelemetry-style observability: tracing, metrics, and structured logging.
-///
-/// All state lives in `OtelState` on the VM — no external dependencies.
+// OpenTelemetry-style observability: tracing, metrics, and structured logging.
+// All state lives in `OtelState` on the VM -- no external dependencies.
 
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};

@@ -1,6 +1,5 @@
-/// Sabo execution profiler
-///
-/// Tracks per-word call counts, cumulative time, and opcode execution stats.
+// Sabo execution profiler
+// Tracks per-word call counts, cumulative time, and opcode execution stats.
 
 use std::collections::HashMap;
 use std::time::{Duration, Instant};

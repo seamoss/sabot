@@ -2,11 +2,10 @@ use std::io::Read as _;
 use std::collections::HashMap;
 use crate::value::Value;
 
-/// Register all I/O, shell, HTTP, and env builtins.
-/// Each builtin is a fn(&mut super::vm::VM) -> Result<(), String>.
-/// We can't directly reference VM here due to circular deps, so we return
-/// a vec of (name, fn pointer) pairs and let vm.rs register them.
-
+// Register all I/O, shell, HTTP, and env builtins.
+// Each builtin is a fn(&mut super::vm::VM) -> Result<(), String>.
+// We can't directly reference VM here due to circular deps, so we return
+// a vec of (name, fn pointer) pairs and let vm.rs register them.
 // We use a trait object approach: vm.rs will call this and register.
 
 pub type BuiltinFn = fn(&mut crate::vm::VM) -> Result<(), String>;
@@ -277,7 +276,7 @@ pub fn io_builtins() -> Vec<(&'static str, BuiltinFn)> {
         // args -> {arg0, arg1, ...}
         ("args", |vm| {
             let args: Vec<Value> = std::env::args()
-                .map(|a| Value::Str(a))
+                .map(Value::Str)
                 .collect();
             vm.push_val(Value::List(args));
             Ok(())

@@ -88,7 +88,7 @@ pub fn parse_request(stream: &mut TcpStream) -> Result<HttpRequest, String> {
     // Request line
     let mut request_line = String::new();
     reader.read_line(&mut request_line).map_err(|e| e.to_string())?;
-    let parts: Vec<&str> = request_line.trim().split_whitespace().collect();
+    let parts: Vec<&str> = request_line.split_whitespace().collect();
     if parts.len() < 2 {
         return Err("Malformed request line".into());
     }
@@ -152,11 +152,11 @@ fn url_decode(s: &str) -> String {
     while let Some(c) = chars.next() {
         if c == '%' {
             let hex: String = chars.by_ref().take(2).collect();
-            if hex.len() == 2 {
-                if let Ok(byte) = u8::from_str_radix(&hex, 16) {
-                    result.push(byte as char);
-                    continue;
-                }
+            if hex.len() == 2
+                && let Ok(byte) = u8::from_str_radix(&hex, 16)
+            {
+                result.push(byte as char);
+                continue;
             }
             result.push('%');
             result.push_str(&hex);

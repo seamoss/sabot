@@ -145,14 +145,14 @@ impl Compiler {
             }
 
             // Tail-call optimization: if the last op is Call to self, replace with TailCall
-            if let Some(Op::Call(name)) = code.ops.last() {
-                if name == &def.name {
-                    let name = name.clone();
-                    code.ops.pop();
-                    code.lines.pop();
-                    code.ops.push(Op::TailCall(name));
-                    code.lines.push(line);
-                }
+            if let Some(Op::Call(name)) = code.ops.last()
+                && name == &def.name
+            {
+                let name = name.clone();
+                code.ops.pop();
+                code.lines.pop();
+                code.ops.push(Op::TailCall(name));
+                code.lines.push(line);
             }
 
             code.ops.push(Op::Jump(end_label));

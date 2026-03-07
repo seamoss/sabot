@@ -28,10 +28,10 @@ type TaskRegistry = Arc<Mutex<HashMap<u64, TaskInfo>>>;
 
 fn find_label(code: &[Op], label: usize) -> Result<usize, String> {
     for (i, op) in code.iter().enumerate() {
-        if let Op::Label(l) = op {
-            if *l == label {
-                return Ok(i);
-            }
+        if let Op::Label(l) = op
+            && *l == label
+        {
+            return Ok(i);
         }
     }
     Err(format!("Label {} not found", label))
@@ -62,13 +62,16 @@ struct Watcher {
     was_true: bool,
 }
 
+type BuiltinFn = fn(&mut VM) -> Result<(), String>;
+type TaskResults = Arc<Mutex<HashMap<u64, Option<Result<Value, String>>>>>;
+
 pub struct VM {
     stack: Vec<Value>,
     named_stacks: HashMap<String, Vec<Value>>,
     globals: HashMap<String, Value>,
     words: HashMap<String, crate::compiler::CodeBlock>,
     frames: Vec<CallFrame>,
-    builtins: HashMap<String, fn(&mut VM) -> Result<(), String>>,
+    builtins: HashMap<String, BuiltinFn>,
 
     // Reactive cells
     cells: HashMap<String, Value>,
@@ -78,7 +81,7 @@ pub struct VM {
     // Concurrency
     channels: Channels,
     next_task_id: u64,
-    task_results: Arc<Mutex<HashMap<u64, Option<Result<Value, String>>>>>,
+    task_results: TaskResults,
 
     // HTTP server
     routes: crate::builtins_http::Routes,
@@ -344,11 +347,11 @@ impl VM {
                     loop {
                         {
                             let mut channels = vm.channels.lock().unwrap();
-                            if let Some(queue) = channels.get_mut(&name) {
-                                if let Some(val) = queue.pop_front() {
-                                    vm.stack.push(val);
-                                    return Ok(());
-                                }
+                            if let Some(queue) = channels.get_mut(&name)
+                                && let Some(val) = queue.pop_front()
+                            {
+                                vm.stack.push(val);
+                                return Ok(());
                             }
                         }
                         std::thread::sleep(std::time::Duration::from_millis(1));
@@ -364,14 +367,14 @@ impl VM {
             match chan {
                 Value::Str(name) => {
                     let mut channels = vm.channels.lock().unwrap();
-                    if let Some(queue) = channels.get_mut(&name) {
-                        if let Some(val) = queue.pop_front() {
-                            vm.stack.push(Value::List(vec![
-                                Value::Symbol("ok".to_string()),
-                                val,
-                            ]));
-                            return Ok(());
-                        }
+                    if let Some(queue) = channels.get_mut(&name)
+                        && let Some(val) = queue.pop_front()
+                    {
+                        vm.stack.push(Value::List(vec![
+                            Value::Symbol("ok".to_string()),
+                            val,
+                        ]));
+                        return Ok(());
                     }
                     vm.stack.push(Value::List(vec![
                         Value::Symbol("error".to_string()),
@@ -440,16 +443,15 @@ impl VM {
                         let mut last_mtime = initial_mtime;
                         loop {
                             std::thread::sleep(std::time::Duration::from_millis(500));
-                            if let Ok(meta) = std::fs::metadata(&path_clone) {
-                                if let Ok(mtime) = meta.modified() {
-                                    if mtime != last_mtime {
-                                        last_mtime = mtime;
-                                        let mut ch = channels.lock().unwrap();
-                                        ch.entry("__watch__".to_string())
-                                            .or_default()
-                                            .push_back(Value::Str(path_clone.clone()));
-                                    }
-                                }
+                            if let Ok(meta) = std::fs::metadata(&path_clone)
+                                && let Ok(mtime) = meta.modified()
+                                && mtime != last_mtime
+                            {
+                                last_mtime = mtime;
+                                let mut ch = channels.lock().unwrap();
+                                ch.entry("__watch__".to_string())
+                                    .or_default()
+                                    .push_back(Value::Str(path_clone.clone()));
                             }
                         }
                     });
@@ -545,7 +547,7 @@ impl VM {
             let mut names: Vec<Value> = vm.words.keys()
                 .map(|k| Value::Str(k.clone()))
                 .collect();
-            names.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
+            names.sort_by_key(|a| a.to_string());
             vm.stack.push(Value::List(names));
             Ok(())
         });
@@ -555,7 +557,7 @@ impl VM {
             let mut names: Vec<Value> = vm.globals.keys()
                 .map(|k| Value::Str(k.clone()))
                 .collect();
-            names.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
+            names.sort_by_key(|a| a.to_string());
             vm.stack.push(Value::List(names));
             Ok(())
         });
@@ -1333,10 +1335,10 @@ impl VM {
                                 // Cancel all other tasks
                                 let registry = vm.task_registry.lock().unwrap();
                                 for &other_tid in &task_ids {
-                                    if other_tid != tid {
-                                        if let Some(info) = registry.get(&other_tid) {
-                                            info.cancel_token.store(true, Ordering::Relaxed);
-                                        }
+                                    if other_tid != tid
+                                        && let Some(info) = registry.get(&other_tid)
+                                    {
+                                        info.cancel_token.store(true, Ordering::Relaxed);
                                     }
                                 }
                                 drop(registry);
@@ -1634,7 +1636,7 @@ impl VM {
             let map = vm.pop()?;
             match map {
                 Value::Map(pairs) => {
-                    let keys: Vec<Value> = pairs.into_iter().map(|(k, _)| k).collect();
+                    let keys: Vec<Value> = pairs.into_keys().collect();
                     vm.stack.push(Value::List(keys));
                     Ok(())
                 }
@@ -1645,7 +1647,7 @@ impl VM {
             let map = vm.pop()?;
             match map {
                 Value::Map(pairs) => {
-                    let vals: Vec<Value> = pairs.into_iter().map(|(_, v)| v).collect();
+                    let vals: Vec<Value> = pairs.into_values().collect();
                     vm.stack.push(Value::List(vals));
                     Ok(())
                 }
@@ -2263,8 +2265,10 @@ impl VM {
         if frame.ip >= frame.code.len() {
             let was_word = frame.word_name.clone();
             self.frames.pop();
-            if was_word.is_some() {
-                if let Some(ref mut p) = self.profiler { p.exit_word(); }
+            if was_word.is_some()
+                && let Some(ref mut p) = self.profiler
+            {
+                p.exit_word();
             }
             return Ok(self.frames.is_empty());
         }

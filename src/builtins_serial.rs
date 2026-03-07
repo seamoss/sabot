@@ -1,6 +1,5 @@
-/// Serialization builtins: JSON, YAML, TOML, and binary (protobuf-style) encoding.
-///
-/// All text formats share a common Value ↔ serde conversion layer.
+// Serialization builtins: JSON, YAML, TOML, and binary (protobuf-style) encoding.
+// All text formats share a common Value <-> serde conversion layer.
 
 use std::collections::HashMap;
 use crate::value::Value;

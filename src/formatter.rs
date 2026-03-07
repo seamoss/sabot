@@ -1,7 +1,6 @@
-/// Sabo source code formatter
-///
-/// Works on raw source text to preserve comments.
-/// Normalizes indentation and spacing within word definitions.
+// Sabo source code formatter
+// Works on raw source text to preserve comments.
+// Normalizes indentation and spacing within word definitions.
 
 pub fn format_source(source: &str) -> String {
     let lines: Vec<&str> = source.lines().collect();
@@ -438,10 +437,7 @@ fn normalize_spaces(s: &str) -> String {
     let mut result = String::with_capacity(s.len());
     let mut prev_space = false;
     for ch in s.chars() {
-        if ch == '\n' || ch == '\r' {
-            if !prev_space { result.push(' '); }
-            prev_space = true;
-        } else if ch.is_whitespace() {
+        if ch.is_whitespace() {
             if !prev_space { result.push(' '); }
             prev_space = true;
         } else {
