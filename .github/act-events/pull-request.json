@@ -1,0 +1,15 @@
+{
+  "action": "opened",
+  "pull_request": {
+    "head": {
+      "ref": "dev"
+    },
+    "base": {
+      "ref": "main"
+    }
+  },
+  "repository": {
+    "full_name": "seamoss/sabo",
+    "default_branch": "main"
+  }
+}

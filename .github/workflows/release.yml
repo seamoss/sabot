@@ -1,0 +1,155 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: tar.gz
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: tar.gz
+            cross: true
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            archive: tar.gz
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            archive: tar.gz
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            archive: zip
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross (for cross-compilation)
+        if: matrix.cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Build (native)
+        if: "!matrix.cross"
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Build (cross)
+        if: matrix.cross
+        run: cross build --release --target ${{ matrix.target }}
+
+      - name: Run Sabo test suite (Unix, native only)
+        if: runner.os != 'Windows' && !matrix.cross
+        run: ./target/${{ matrix.target }}/release/sabo test lib/
+
+      - name: Run Sabo test suite (Windows)
+        if: runner.os == 'Windows'
+        run: .\target\${{ matrix.target }}\release\sabo.exe test lib/
+
+      - name: Get version from tag
+        id: version
+        shell: bash
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+      - name: Package (Unix)
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: |
+          STAGING="sabo-${{ steps.version.outputs.version }}-${{ matrix.target }}"
+          mkdir -p "$STAGING"
+          cp target/${{ matrix.target }}/release/sabo "$STAGING/"
+          cp README.md LICENSE CHANGELOG.md "$STAGING/" 2>/dev/null || true
+          cp -r lib "$STAGING/lib"
+          cp -r docs "$STAGING/docs"
+          tar czf "$STAGING.tar.gz" "$STAGING"
+          echo "ASSET=$STAGING.tar.gz" >> "$GITHUB_ENV"
+
+      - name: Package (Windows)
+        if: matrix.archive == 'zip'
+        shell: bash
+        run: |
+          STAGING="sabo-${{ steps.version.outputs.version }}-${{ matrix.target }}"
+          mkdir -p "$STAGING"
+          cp target/${{ matrix.target }}/release/sabo.exe "$STAGING/"
+          cp README.md LICENSE CHANGELOG.md "$STAGING/" 2>/dev/null || true
+          cp -r lib "$STAGING/lib"
+          cp -r docs "$STAGING/docs"
+          7z a "$STAGING.zip" "$STAGING"
+          echo "ASSET=$STAGING.zip" >> "$GITHUB_ENV"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sabo-${{ matrix.target }}
+          path: ${{ env.ASSET }}
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Collect release assets
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f \( -name '*.tar.gz' -o -name '*.zip' \) -exec cp {} release-assets/ \;
+          ls -la release-assets/
+
+      - name: Generate checksums
+        working-directory: release-assets
+        run: |
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Extract changelog for this version
+        id: changelog
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          # Extract the section for this version from CHANGELOG.md
+          if [ -f CHANGELOG.md ]; then
+            NOTES=$(sed -n "/^## \[${VERSION}\]/,/^## \[/p" CHANGELOG.md | sed '$d')
+            if [ -z "$NOTES" ]; then
+              NOTES="Release ${GITHUB_REF#refs/tags/}"
+            fi
+          else
+            NOTES="Release ${GITHUB_REF#refs/tags/}"
+          fi
+          # Write to file to preserve newlines
+          echo "$NOTES" > release-notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-notes.md
+          files: release-assets/*
+          draft: false
+          prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
