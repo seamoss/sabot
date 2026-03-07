@@ -2635,8 +2635,10 @@ impl VM {
             Op::Return => {
                 let was_word = self.frames.last().and_then(|f| f.word_name.clone());
                 self.frames.pop();
-                if was_word.is_some() {
-                    if let Some(ref mut p) = self.profiler { p.exit_word(); }
+                if was_word.is_some()
+                    && let Some(ref mut p) = self.profiler
+                {
+                    p.exit_word();
                 }
                 if self.frames.is_empty() {
                     return Ok(true);
