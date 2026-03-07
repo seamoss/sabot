@@ -1,10 +1,10 @@
 // OpenTelemetry-style observability: tracing, metrics, and structured logging.
 // All state lives in `OtelState` on the VM -- no external dependencies.
 
-use std::collections::HashMap;
-use std::time::{SystemTime, UNIX_EPOCH};
 use crate::value::Value;
 use crate::vm::VM;
+use std::collections::HashMap;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 // ============================================================
 // Data types
@@ -71,8 +71,12 @@ impl HistogramData {
         self.values.push(val);
         self.sum += val;
         self.count += 1;
-        if val < self.min { self.min = val; }
-        if val > self.max { self.max = val; }
+        if val < self.min {
+            self.min = val;
+        }
+        if val > self.max {
+            self.max = val;
+        }
     }
 }
 
@@ -101,9 +105,15 @@ impl LogLevel {
                 "info" => Ok(LogLevel::Info),
                 "warn" => Ok(LogLevel::Warn),
                 "error" => Ok(LogLevel::Error),
-                _ => Err(format!("Unknown log level '{}' (use :debug, :info, :warn, :error)", s)),
+                _ => Err(format!(
+                    "Unknown log level '{}' (use :debug, :info, :warn, :error)",
+                    s
+                )),
             },
-            _ => Err(format!("Log level must be a symbol, got {}", val.type_name())),
+            _ => Err(format!(
+                "Log level must be a symbol, got {}",
+                val.type_name()
+            )),
         }
     }
 }
@@ -125,7 +135,7 @@ pub struct LogEntry {
 pub struct OtelState {
     // Tracing
     pub spans: Vec<Span>,
-    pub span_stack: Vec<u64>,  // active span context stack
+    pub span_stack: Vec<u64>, // active span context stack
     next_span_id: u64,
 
     // Metrics
@@ -166,7 +176,12 @@ fn span_start(vm: &mut VM) -> Result<(), String> {
     let name_str = match name {
         Value::Str(s) => s,
         Value::Symbol(s) => s,
-        _ => return Err(format!("'span_start' expects string/symbol name, got {}", name.type_name())),
+        _ => {
+            return Err(format!(
+                "'span_start' expects string/symbol name, got {}",
+                name.type_name()
+            ));
+        }
     };
 
     let otel = vm.otel_mut();
@@ -193,7 +208,9 @@ fn span_start(vm: &mut VM) -> Result<(), String> {
 // span_end -> ()
 fn span_end(vm: &mut VM) -> Result<(), String> {
     let otel = vm.otel_mut();
-    let id = otel.span_stack.pop()
+    let id = otel
+        .span_stack
+        .pop()
         .ok_or("'span_end' called with no active span")?;
     let end = now_ms();
     if let Some(span) = otel.spans.iter_mut().find(|s| s.id == id) {
@@ -212,7 +229,12 @@ fn span_scoped(vm: &mut VM) -> Result<(), String> {
     let name_str = match &name {
         Value::Str(s) => s.clone(),
         Value::Symbol(s) => s.clone(),
-        _ => return Err(format!("'span' expects string/symbol name, got {}", name.type_name())),
+        _ => {
+            return Err(format!(
+                "'span' expects string/symbol name, got {}",
+                name.type_name()
+            ));
+        }
     };
 
     // Start span
@@ -235,7 +257,10 @@ fn span_scoped(vm: &mut VM) -> Result<(), String> {
     // Execute body
     let result = match body {
         Value::Quotation(ops) => vm.run_quotation(&ops),
-        _ => Err(format!("'span' expects quotation body, got {}", body.type_name())),
+        _ => Err(format!(
+            "'span' expects quotation body, got {}",
+            body.type_name()
+        )),
     };
 
     // End span
@@ -245,8 +270,14 @@ fn span_scoped(vm: &mut VM) -> Result<(), String> {
     if let Some(span) = otel.spans.iter_mut().find(|s| s.id == id) {
         span.end_ms = Some(end);
         match &result {
-            Ok(()) => { if span.status == SpanStatus::Unset { span.status = SpanStatus::Ok; } }
-            Err(e) => { span.status = SpanStatus::Error(e.clone()); }
+            Ok(()) => {
+                if span.status == SpanStatus::Unset {
+                    span.status = SpanStatus::Ok;
+                }
+            }
+            Err(e) => {
+                span.status = SpanStatus::Error(e.clone());
+            }
         }
     }
 
@@ -259,11 +290,18 @@ fn span_attr(vm: &mut VM) -> Result<(), String> {
     let key = vm.pop_val()?;
     let key_str = match key {
         Value::Str(s) => s,
-        _ => return Err(format!("'span_attr' expects string key, got {}", key.type_name())),
+        _ => {
+            return Err(format!(
+                "'span_attr' expects string key, got {}",
+                key.type_name()
+            ));
+        }
     };
 
     let otel = vm.otel_mut();
-    let id = otel.span_stack.last()
+    let id = otel
+        .span_stack
+        .last()
         .ok_or("'span_attr' called with no active span")?;
     let id = *id;
     if let Some(span) = otel.spans.iter_mut().find(|s| s.id == id) {
@@ -278,11 +316,18 @@ fn span_event_fn(vm: &mut VM) -> Result<(), String> {
     let name_str = match name {
         Value::Str(s) => s,
         Value::Symbol(s) => s,
-        _ => return Err(format!("'span_event' expects string name, got {}", name.type_name())),
+        _ => {
+            return Err(format!(
+                "'span_event' expects string name, got {}",
+                name.type_name()
+            ));
+        }
     };
 
     let otel = vm.otel_mut();
-    let id = otel.span_stack.last()
+    let id = otel
+        .span_stack
+        .last()
         .ok_or("'span_event' called with no active span")?;
     let id = *id;
     if let Some(span) = otel.spans.iter_mut().find(|s| s.id == id) {
@@ -299,11 +344,18 @@ fn span_error(vm: &mut VM) -> Result<(), String> {
     let msg = vm.pop_val()?;
     let msg_str = match msg {
         Value::Str(s) => s,
-        _ => return Err(format!("'span_error' expects string, got {}", msg.type_name())),
+        _ => {
+            return Err(format!(
+                "'span_error' expects string, got {}",
+                msg.type_name()
+            ));
+        }
     };
 
     let otel = vm.otel_mut();
-    let id = otel.span_stack.last()
+    let id = otel
+        .span_stack
+        .last()
         .ok_or("'span_error' called with no active span")?;
     let id = *id;
     if let Some(span) = otel.spans.iter_mut().find(|s| s.id == id) {
@@ -319,43 +371,68 @@ fn span_error(vm: &mut VM) -> Result<(), String> {
 // spans_dump -> list of span maps
 fn spans_dump(vm: &mut VM) -> Result<(), String> {
     let otel = vm.otel_mut();
-    let spans: Vec<Value> = otel.spans.iter().map(|s| {
-        let mut map = HashMap::new();
-        map.insert(Value::Str("id".into()), Value::Int(s.id as i64));
-        map.insert(Value::Str("name".into()), Value::Str(s.name.clone()));
-        map.insert(Value::Str("parent_id".into()), match s.parent_id {
-            Some(pid) => Value::Int(pid as i64),
-            None => Value::Symbol("null".into()),
-        });
-        map.insert(Value::Str("start_ms".into()), Value::Int(s.start_ms));
-        map.insert(Value::Str("end_ms".into()), match s.end_ms {
-            Some(t) => Value::Int(t),
-            None => Value::Symbol("null".into()),
-        });
-        map.insert(Value::Str("duration_ms".into()), match s.end_ms {
-            Some(t) => Value::Int(t - s.start_ms),
-            None => Value::Symbol("null".into()),
-        });
-        map.insert(Value::Str("status".into()), match &s.status {
-            SpanStatus::Ok => Value::Symbol("ok".into()),
-            SpanStatus::Error(msg) => Value::Str(format!("error: {}", msg)),
-            SpanStatus::Unset => Value::Symbol("unset".into()),
-        });
-        // Attributes as a map
-        let attrs: HashMap<Value, Value> = s.attributes.iter()
-            .map(|(k, v)| (Value::Str(k.clone()), v.clone()))
-            .collect();
-        map.insert(Value::Str("attributes".into()), Value::Map(attrs));
-        // Events as a list
-        let events: Vec<Value> = s.events.iter().map(|e| {
-            let mut em = HashMap::new();
-            em.insert(Value::Str("name".into()), Value::Str(e.name.clone()));
-            em.insert(Value::Str("timestamp_ms".into()), Value::Int(e.timestamp_ms));
-            Value::Map(em)
-        }).collect();
-        map.insert(Value::Str("events".into()), Value::List(events));
-        Value::Map(map)
-    }).collect();
+    let spans: Vec<Value> = otel
+        .spans
+        .iter()
+        .map(|s| {
+            let mut map = HashMap::new();
+            map.insert(Value::Str("id".into()), Value::Int(s.id as i64));
+            map.insert(Value::Str("name".into()), Value::Str(s.name.clone()));
+            map.insert(
+                Value::Str("parent_id".into()),
+                match s.parent_id {
+                    Some(pid) => Value::Int(pid as i64),
+                    None => Value::Symbol("null".into()),
+                },
+            );
+            map.insert(Value::Str("start_ms".into()), Value::Int(s.start_ms));
+            map.insert(
+                Value::Str("end_ms".into()),
+                match s.end_ms {
+                    Some(t) => Value::Int(t),
+                    None => Value::Symbol("null".into()),
+                },
+            );
+            map.insert(
+                Value::Str("duration_ms".into()),
+                match s.end_ms {
+                    Some(t) => Value::Int(t - s.start_ms),
+                    None => Value::Symbol("null".into()),
+                },
+            );
+            map.insert(
+                Value::Str("status".into()),
+                match &s.status {
+                    SpanStatus::Ok => Value::Symbol("ok".into()),
+                    SpanStatus::Error(msg) => Value::Str(format!("error: {}", msg)),
+                    SpanStatus::Unset => Value::Symbol("unset".into()),
+                },
+            );
+            // Attributes as a map
+            let attrs: HashMap<Value, Value> = s
+                .attributes
+                .iter()
+                .map(|(k, v)| (Value::Str(k.clone()), v.clone()))
+                .collect();
+            map.insert(Value::Str("attributes".into()), Value::Map(attrs));
+            // Events as a list
+            let events: Vec<Value> = s
+                .events
+                .iter()
+                .map(|e| {
+                    let mut em = HashMap::new();
+                    em.insert(Value::Str("name".into()), Value::Str(e.name.clone()));
+                    em.insert(
+                        Value::Str("timestamp_ms".into()),
+                        Value::Int(e.timestamp_ms),
+                    );
+                    Value::Map(em)
+                })
+                .collect();
+            map.insert(Value::Str("events".into()), Value::List(events));
+            Value::Map(map)
+        })
+        .collect();
     vm.push_val(Value::List(spans));
     Ok(())
 }
@@ -377,14 +454,25 @@ fn counter_inc(vm: &mut VM) -> Result<(), String> {
     let name = vm.pop_val()?;
     let name_str = match name {
         Value::Str(s) => s,
-        _ => return Err(format!("'counter_inc' expects string name, got {}", name.type_name())),
+        _ => {
+            return Err(format!(
+                "'counter_inc' expects string name, got {}",
+                name.type_name()
+            ));
+        }
     };
     let otel = vm.otel_mut();
-    let entry = otel.metrics.entry(name_str.clone()).or_insert_with(|| MetricEntry {
-        kind: MetricKind::Counter(0.0),
-    });
+    let entry = otel
+        .metrics
+        .entry(name_str.clone())
+        .or_insert_with(|| MetricEntry {
+            kind: MetricKind::Counter(0.0),
+        });
     match &mut entry.kind {
-        MetricKind::Counter(v) => { *v += 1.0; Ok(()) }
+        MetricKind::Counter(v) => {
+            *v += 1.0;
+            Ok(())
+        }
         _ => Err(format!("'{}' is not a counter", name_str)),
     }
 }
@@ -395,19 +483,35 @@ fn counter_add(vm: &mut VM) -> Result<(), String> {
     let n = vm.pop_val()?;
     let name_str = match name {
         Value::Str(s) => s,
-        _ => return Err(format!("'counter_add' expects string name, got {}", name.type_name())),
+        _ => {
+            return Err(format!(
+                "'counter_add' expects string name, got {}",
+                name.type_name()
+            ));
+        }
     };
     let amount = match n {
         Value::Int(i) => i as f64,
         Value::Float(f) => f,
-        _ => return Err(format!("'counter_add' expects number, got {}", n.type_name())),
+        _ => {
+            return Err(format!(
+                "'counter_add' expects number, got {}",
+                n.type_name()
+            ));
+        }
     };
     let otel = vm.otel_mut();
-    let entry = otel.metrics.entry(name_str.clone()).or_insert_with(|| MetricEntry {
-        kind: MetricKind::Counter(0.0),
-    });
+    let entry = otel
+        .metrics
+        .entry(name_str.clone())
+        .or_insert_with(|| MetricEntry {
+            kind: MetricKind::Counter(0.0),
+        });
     match &mut entry.kind {
-        MetricKind::Counter(v) => { *v += amount; Ok(()) }
+        MetricKind::Counter(v) => {
+            *v += amount;
+            Ok(())
+        }
         _ => Err(format!("'{}' is not a counter", name_str)),
     }
 }
@@ -418,19 +522,35 @@ fn gauge_set(vm: &mut VM) -> Result<(), String> {
     let val = vm.pop_val()?;
     let name_str = match name {
         Value::Str(s) => s,
-        _ => return Err(format!("'gauge_set' expects string name, got {}", name.type_name())),
+        _ => {
+            return Err(format!(
+                "'gauge_set' expects string name, got {}",
+                name.type_name()
+            ));
+        }
     };
     let amount = match val {
         Value::Int(i) => i as f64,
         Value::Float(f) => f,
-        _ => return Err(format!("'gauge_set' expects number, got {}", val.type_name())),
+        _ => {
+            return Err(format!(
+                "'gauge_set' expects number, got {}",
+                val.type_name()
+            ));
+        }
     };
     let otel = vm.otel_mut();
-    let entry = otel.metrics.entry(name_str.clone()).or_insert_with(|| MetricEntry {
-        kind: MetricKind::Gauge(0.0),
-    });
+    let entry = otel
+        .metrics
+        .entry(name_str.clone())
+        .or_insert_with(|| MetricEntry {
+            kind: MetricKind::Gauge(0.0),
+        });
     match &mut entry.kind {
-        MetricKind::Gauge(v) => { *v = amount; Ok(()) }
+        MetricKind::Gauge(v) => {
+            *v = amount;
+            Ok(())
+        }
         _ => Err(format!("'{}' is not a gauge", name_str)),
     }
 }
@@ -440,14 +560,25 @@ fn gauge_inc(vm: &mut VM) -> Result<(), String> {
     let name = vm.pop_val()?;
     let name_str = match name {
         Value::Str(s) => s,
-        _ => return Err(format!("'gauge_inc' expects string name, got {}", name.type_name())),
+        _ => {
+            return Err(format!(
+                "'gauge_inc' expects string name, got {}",
+                name.type_name()
+            ));
+        }
     };
     let otel = vm.otel_mut();
-    let entry = otel.metrics.entry(name_str.clone()).or_insert_with(|| MetricEntry {
-        kind: MetricKind::Gauge(0.0),
-    });
+    let entry = otel
+        .metrics
+        .entry(name_str.clone())
+        .or_insert_with(|| MetricEntry {
+            kind: MetricKind::Gauge(0.0),
+        });
     match &mut entry.kind {
-        MetricKind::Gauge(v) => { *v += 1.0; Ok(()) }
+        MetricKind::Gauge(v) => {
+            *v += 1.0;
+            Ok(())
+        }
         _ => Err(format!("'{}' is not a gauge", name_str)),
     }
 }
@@ -457,14 +588,25 @@ fn gauge_dec(vm: &mut VM) -> Result<(), String> {
     let name = vm.pop_val()?;
     let name_str = match name {
         Value::Str(s) => s,
-        _ => return Err(format!("'gauge_dec' expects string name, got {}", name.type_name())),
+        _ => {
+            return Err(format!(
+                "'gauge_dec' expects string name, got {}",
+                name.type_name()
+            ));
+        }
     };
     let otel = vm.otel_mut();
-    let entry = otel.metrics.entry(name_str.clone()).or_insert_with(|| MetricEntry {
-        kind: MetricKind::Gauge(0.0),
-    });
+    let entry = otel
+        .metrics
+        .entry(name_str.clone())
+        .or_insert_with(|| MetricEntry {
+            kind: MetricKind::Gauge(0.0),
+        });
     match &mut entry.kind {
-        MetricKind::Gauge(v) => { *v -= 1.0; Ok(()) }
+        MetricKind::Gauge(v) => {
+            *v -= 1.0;
+            Ok(())
+        }
         _ => Err(format!("'{}' is not a gauge", name_str)),
     }
 }
@@ -475,19 +617,35 @@ fn histogram_record(vm: &mut VM) -> Result<(), String> {
     let val = vm.pop_val()?;
     let name_str = match name {
         Value::Str(s) => s,
-        _ => return Err(format!("'histogram_record' expects string name, got {}", name.type_name())),
+        _ => {
+            return Err(format!(
+                "'histogram_record' expects string name, got {}",
+                name.type_name()
+            ));
+        }
     };
     let amount = match val {
         Value::Int(i) => i as f64,
         Value::Float(f) => f,
-        _ => return Err(format!("'histogram_record' expects number, got {}", val.type_name())),
+        _ => {
+            return Err(format!(
+                "'histogram_record' expects number, got {}",
+                val.type_name()
+            ));
+        }
     };
     let otel = vm.otel_mut();
-    let entry = otel.metrics.entry(name_str.clone()).or_insert_with(|| MetricEntry {
-        kind: MetricKind::Histogram(HistogramData::new()),
-    });
+    let entry = otel
+        .metrics
+        .entry(name_str.clone())
+        .or_insert_with(|| MetricEntry {
+            kind: MetricKind::Histogram(HistogramData::new()),
+        });
     match &mut entry.kind {
-        MetricKind::Histogram(h) => { h.record(amount); Ok(()) }
+        MetricKind::Histogram(h) => {
+            h.record(amount);
+            Ok(())
+        }
         _ => Err(format!("'{}' is not a histogram", name_str)),
     }
 }
@@ -511,11 +669,22 @@ fn metrics_dump(vm: &mut VM) -> Result<(), String> {
                 m.insert(Value::Str("type".into()), Value::Symbol("histogram".into()));
                 m.insert(Value::Str("count".into()), Value::Int(h.count as i64));
                 m.insert(Value::Str("sum".into()), Value::Float(h.sum));
-                m.insert(Value::Str("min".into()), Value::Float(if h.count == 0 { 0.0 } else { h.min }));
-                m.insert(Value::Str("max".into()), Value::Float(if h.count == 0 { 0.0 } else { h.max }));
-                m.insert(Value::Str("avg".into()), Value::Float(
-                    if h.count == 0 { 0.0 } else { h.sum / h.count as f64 }
-                ));
+                m.insert(
+                    Value::Str("min".into()),
+                    Value::Float(if h.count == 0 { 0.0 } else { h.min }),
+                );
+                m.insert(
+                    Value::Str("max".into()),
+                    Value::Float(if h.count == 0 { 0.0 } else { h.max }),
+                );
+                m.insert(
+                    Value::Str("avg".into()),
+                    Value::Float(if h.count == 0 {
+                        0.0
+                    } else {
+                        h.sum / h.count as f64
+                    }),
+                );
             }
         }
         result.insert(Value::Str(name.clone()), Value::Map(m));
@@ -561,10 +730,18 @@ fn log_at_level(vm: &mut VM, level: LogLevel) -> Result<(), String> {
     Ok(())
 }
 
-fn log_debug(vm: &mut VM) -> Result<(), String> { log_at_level(vm, LogLevel::Debug) }
-fn log_info(vm: &mut VM) -> Result<(), String> { log_at_level(vm, LogLevel::Info) }
-fn log_warn(vm: &mut VM) -> Result<(), String> { log_at_level(vm, LogLevel::Warn) }
-fn log_error(vm: &mut VM) -> Result<(), String> { log_at_level(vm, LogLevel::Error) }
+fn log_debug(vm: &mut VM) -> Result<(), String> {
+    log_at_level(vm, LogLevel::Debug)
+}
+fn log_info(vm: &mut VM) -> Result<(), String> {
+    log_at_level(vm, LogLevel::Info)
+}
+fn log_warn(vm: &mut VM) -> Result<(), String> {
+    log_at_level(vm, LogLevel::Warn)
+}
+fn log_error(vm: &mut VM) -> Result<(), String> {
+    log_at_level(vm, LogLevel::Error)
+}
 
 // "msg" #{fields} :level log_with -> ()
 fn log_with(vm: &mut VM) -> Result<(), String> {
@@ -578,10 +755,24 @@ fn log_with(vm: &mut VM) -> Result<(), String> {
         other => format!("{}", other),
     };
     let fields: HashMap<String, Value> = match fields_val {
-        Value::Map(m) => m.into_iter()
-            .map(|(k, v)| (match k { Value::Str(s) => s, other => format!("{}", other) }, v))
+        Value::Map(m) => m
+            .into_iter()
+            .map(|(k, v)| {
+                (
+                    match k {
+                        Value::Str(s) => s,
+                        other => format!("{}", other),
+                    },
+                    v,
+                )
+            })
             .collect(),
-        _ => return Err(format!("'log_with' expects map of fields, got {}", fields_val.type_name())),
+        _ => {
+            return Err(format!(
+                "'log_with' expects map of fields, got {}",
+                fields_val.type_name()
+            ));
+        }
     };
 
     let otel = vm.otel_mut();
@@ -592,10 +783,12 @@ fn log_with(vm: &mut VM) -> Result<(), String> {
     let ts = now_ms();
 
     // Print structured log to stderr
-    let field_strs: Vec<String> = fields.iter()
-        .map(|(k, v)| format!("{}={}", k, v))
-        .collect();
-    let fields_part = if field_strs.is_empty() { String::new() } else { format!(" {}", field_strs.join(" ")) };
+    let field_strs: Vec<String> = fields.iter().map(|(k, v)| format!("{}={}", k, v)).collect();
+    let fields_part = if field_strs.is_empty() {
+        String::new()
+    } else {
+        format!(" {}", field_strs.join(" "))
+    };
     eprintln!("{} [{}] {}{}", ts, level.as_str(), msg_str, fields_part);
 
     otel.logs.push(LogEntry {
@@ -619,21 +812,39 @@ fn log_level(vm: &mut VM) -> Result<(), String> {
 // logs_dump -> list of log entry maps
 fn logs_dump(vm: &mut VM) -> Result<(), String> {
     let otel = vm.otel_mut();
-    let entries: Vec<Value> = otel.logs.iter().map(|entry| {
-        let mut m = HashMap::new();
-        m.insert(Value::Str("timestamp_ms".into()), Value::Int(entry.timestamp_ms));
-        m.insert(Value::Str("level".into()), Value::Symbol(entry.level.as_str().into()));
-        m.insert(Value::Str("message".into()), Value::Str(entry.message.clone()));
-        m.insert(Value::Str("span_id".into()), match entry.span_id {
-            Some(id) => Value::Int(id as i64),
-            None => Value::Symbol("null".into()),
-        });
-        let fields: HashMap<Value, Value> = entry.fields.iter()
-            .map(|(k, v)| (Value::Str(k.clone()), v.clone()))
-            .collect();
-        m.insert(Value::Str("fields".into()), Value::Map(fields));
-        Value::Map(m)
-    }).collect();
+    let entries: Vec<Value> = otel
+        .logs
+        .iter()
+        .map(|entry| {
+            let mut m = HashMap::new();
+            m.insert(
+                Value::Str("timestamp_ms".into()),
+                Value::Int(entry.timestamp_ms),
+            );
+            m.insert(
+                Value::Str("level".into()),
+                Value::Symbol(entry.level.as_str().into()),
+            );
+            m.insert(
+                Value::Str("message".into()),
+                Value::Str(entry.message.clone()),
+            );
+            m.insert(
+                Value::Str("span_id".into()),
+                match entry.span_id {
+                    Some(id) => Value::Int(id as i64),
+                    None => Value::Symbol("null".into()),
+                },
+            );
+            let fields: HashMap<Value, Value> = entry
+                .fields
+                .iter()
+                .map(|(k, v)| (Value::Str(k.clone()), v.clone()))
+                .collect();
+            m.insert(Value::Str("fields".into()), Value::Map(fields));
+            Value::Map(m)
+        })
+        .collect();
     vm.push_val(Value::List(entries));
     Ok(())
 }

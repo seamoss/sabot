@@ -9,7 +9,10 @@ pub enum Pattern {
     Wildcard,
     /// List destructure: {[head | tail]} or {[]}
     ListEmpty,
-    ListCons { head: String, tail: String },
+    ListCons {
+        head: String,
+        tail: String,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -24,11 +27,7 @@ pub enum Literal {
 /// A guard condition on a pattern match arm
 #[derive(Debug, Clone)]
 pub enum Guard {
-    Compare {
-        left: Expr,
-        op: CmpOp,
-        right: Expr,
-    },
+    Compare { left: Expr, op: CmpOp, right: Expr },
     And(Box<Guard>, Box<Guard>),
     Or(Box<Guard>, Box<Guard>),
     Not(Box<Guard>),
@@ -135,7 +134,7 @@ pub enum LetTarget {
     /// let {h | t} = ... (head/tail)
     ListCons { head: String, tail: String },
     /// let #{"key" => name, ...} = ... (map keys)
-    Map(Vec<(String, String)>),  // (key, binding_name)
+    Map(Vec<(String, String)>), // (key, binding_name)
 }
 
 /// Let binding: let <target> = <exprs until newline/semicolon>

@@ -1,6 +1,6 @@
-use std::io::Read as _;
-use std::collections::HashMap;
 use crate::value::Value;
+use std::collections::HashMap;
+use std::io::Read as _;
 
 // Register all I/O, shell, HTTP, and env builtins.
 // Each builtin is a fn(&mut super::vm::VM) -> Result<(), String>.
@@ -24,10 +24,12 @@ pub fn io_builtins() -> Vec<(&'static str, BuiltinFn)> {
                     vm.push_val(Value::Str(content));
                     Ok(())
                 }
-                _ => Err(format!("'read_file' expects string path, got {}", path.type_name())),
+                _ => Err(format!(
+                    "'read_file' expects string path, got {}",
+                    path.type_name()
+                )),
             }
         }),
-
         // "path" read_lines -> {line1, line2, ...}
         ("read_lines", |vm| {
             let path = vm.pop_val()?;
@@ -35,30 +37,29 @@ pub fn io_builtins() -> Vec<(&'static str, BuiltinFn)> {
                 Value::Str(p) => {
                     let content = std::fs::read_to_string(&p)
                         .map_err(|e| format!("Cannot read '{}': {}", p, e))?;
-                    let lines: Vec<Value> = content.lines()
-                        .map(|l| Value::Str(l.to_string()))
-                        .collect();
+                    let lines: Vec<Value> =
+                        content.lines().map(|l| Value::Str(l.to_string())).collect();
                     vm.push_val(Value::List(lines));
                     Ok(())
                 }
-                _ => Err(format!("'read_lines' expects string path, got {}", path.type_name())),
+                _ => Err(format!(
+                    "'read_lines' expects string path, got {}",
+                    path.type_name()
+                )),
             }
         }),
-
         // "content" "path" write_file -> (nothing, writes file)
         ("write_file", |vm| {
             let path = vm.pop_val()?;
             let content = vm.pop_val()?;
             match (content, path) {
                 (Value::Str(c), Value::Str(p)) => {
-                    std::fs::write(&p, &c)
-                        .map_err(|e| format!("Cannot write '{}': {}", p, e))?;
+                    std::fs::write(&p, &c).map_err(|e| format!("Cannot write '{}': {}", p, e))?;
                     Ok(())
                 }
                 _ => Err("'write_file' expects two strings (content, path)".to_string()),
             }
         }),
-
         // "content" "path" append_file -> (nothing)
         ("append_file", |vm| {
             let path = vm.pop_val()?;
@@ -78,7 +79,6 @@ pub fn io_builtins() -> Vec<(&'static str, BuiltinFn)> {
                 _ => Err("'append_file' expects two strings (content, path)".to_string()),
             }
         }),
-
         // "path" file_exists -> bool
         ("file_exists", |vm| {
             let path = vm.pop_val()?;
@@ -87,10 +87,12 @@ pub fn io_builtins() -> Vec<(&'static str, BuiltinFn)> {
                     vm.push_val(Value::Bool(std::path::Path::new(&p).exists()));
                     Ok(())
                 }
-                _ => Err(format!("'file_exists' expects string, got {}", path.type_name())),
+                _ => Err(format!(
+                    "'file_exists' expects string, got {}",
+                    path.type_name()
+                )),
             }
         }),
-
         // "path" ls -> {entries...}
         ("ls", |vm| {
             let path = vm.pop_val()?;
@@ -101,9 +103,7 @@ pub fn io_builtins() -> Vec<(&'static str, BuiltinFn)> {
                         .map_err(|e| format!("Cannot read dir '{}': {}", p, e))?;
                     for entry in dir {
                         let entry = entry.map_err(|e| format!("Dir entry error: {}", e))?;
-                        entries.push(Value::Str(
-                            entry.file_name().to_string_lossy().to_string()
-                        ));
+                        entries.push(Value::Str(entry.file_name().to_string_lossy().to_string()));
                     }
                     entries.sort_by(|a, b| {
                         if let (Value::Str(a), Value::Str(b)) = (a, b) {
@@ -115,10 +115,12 @@ pub fn io_builtins() -> Vec<(&'static str, BuiltinFn)> {
                     vm.push_val(Value::List(entries));
                     Ok(())
                 }
-                _ => Err(format!("'ls' expects string path, got {}", path.type_name())),
+                _ => Err(format!(
+                    "'ls' expects string path, got {}",
+                    path.type_name()
+                )),
             }
         }),
-
         // ---- Shell Execution ----
 
         // "cmd" exec -> stdout_string
@@ -135,10 +137,12 @@ pub fn io_builtins() -> Vec<(&'static str, BuiltinFn)> {
                     vm.push_val(Value::Str(stdout));
                     Ok(())
                 }
-                _ => Err(format!("'exec' expects string command, got {}", cmd.type_name())),
+                _ => Err(format!(
+                    "'exec' expects string command, got {}",
+                    cmd.type_name()
+                )),
             }
         }),
-
         // "cmd" exec_full -> #{"stdout" => ..., "stderr" => ..., "code" => ...}
         ("exec_full", |vm| {
             let cmd = vm.pop_val()?;
@@ -159,10 +163,12 @@ pub fn io_builtins() -> Vec<(&'static str, BuiltinFn)> {
                     vm.push_val(Value::Map(map));
                     Ok(())
                 }
-                _ => Err(format!("'exec_full' expects string, got {}", cmd.type_name())),
+                _ => Err(format!(
+                    "'exec_full' expects string, got {}",
+                    cmd.type_name()
+                )),
             }
         }),
-
         // ---- HTTP ----
 
         // "url" http_get -> string (response body)
@@ -170,7 +176,8 @@ pub fn io_builtins() -> Vec<(&'static str, BuiltinFn)> {
             let url = vm.pop_val()?;
             match url {
                 Value::Str(u) => {
-                    let body = ureq::get(&u).call()
+                    let body = ureq::get(&u)
+                        .call()
                         .map_err(|e| format!("HTTP GET failed: {}", e))?
                         .into_body()
                         .read_to_string()
@@ -178,10 +185,12 @@ pub fn io_builtins() -> Vec<(&'static str, BuiltinFn)> {
                     vm.push_val(Value::Str(body));
                     Ok(())
                 }
-                _ => Err(format!("'http_get' expects string URL, got {}", url.type_name())),
+                _ => Err(format!(
+                    "'http_get' expects string URL, got {}",
+                    url.type_name()
+                )),
             }
         }),
-
         // "body" "url" http_post -> string (response body)
         ("http_post", |vm| {
             let url = vm.pop_val()?;
@@ -201,29 +210,29 @@ pub fn io_builtins() -> Vec<(&'static str, BuiltinFn)> {
                 _ => Err("'http_post' expects two strings (body, url)".to_string()),
             }
         }),
-
         // ---- Stdin ----
 
         // stdin_read -> string (all of stdin)
         ("stdin_read", |vm| {
             let mut buf = String::new();
-            std::io::stdin().read_to_string(&mut buf)
+            std::io::stdin()
+                .read_to_string(&mut buf)
                 .map_err(|e| format!("stdin read failed: {}", e))?;
             vm.push_val(Value::Str(buf));
             Ok(())
         }),
-
         // stdin_lines -> {line1, line2, ...}
         ("stdin_lines", |vm| {
             use std::io::BufRead;
             let stdin = std::io::stdin();
-            let lines: Vec<Value> = stdin.lock().lines()
+            let lines: Vec<Value> = stdin
+                .lock()
+                .lines()
                 .map(|l| Value::Str(l.unwrap_or_default()))
                 .collect();
             vm.push_val(Value::List(lines));
             Ok(())
         }),
-
         // "prompt" input -> string (print prompt, read one line)
         ("input", |vm| {
             use std::io::Write;
@@ -233,20 +242,26 @@ pub fn io_builtins() -> Vec<(&'static str, BuiltinFn)> {
                     print!("{}", p);
                     std::io::stdout().flush().unwrap();
                     let mut line = String::new();
-                    let bytes = std::io::stdin().read_line(&mut line)
+                    let bytes = std::io::stdin()
+                        .read_line(&mut line)
                         .map_err(|e| format!("input failed: {}", e))?;
                     if bytes == 0 {
                         return Err("EOF on stdin".to_string());
                     }
                     // Trim the trailing newline
-                    let trimmed = line.trim_end_matches('\n').trim_end_matches('\r').to_string();
+                    let trimmed = line
+                        .trim_end_matches('\n')
+                        .trim_end_matches('\r')
+                        .to_string();
                     vm.push_val(Value::Str(trimmed));
                     Ok(())
                 }
-                _ => Err(format!("'input' expects string prompt, got {}", prompt.type_name())),
+                _ => Err(format!(
+                    "'input' expects string prompt, got {}",
+                    prompt.type_name()
+                )),
             }
         }),
-
         // ---- Environment ----
 
         // "NAME" env_get -> string (or error)
@@ -260,10 +275,12 @@ pub fn io_builtins() -> Vec<(&'static str, BuiltinFn)> {
                     }
                     Ok(())
                 }
-                _ => Err(format!("'env_get' expects string, got {}", name.type_name())),
+                _ => Err(format!(
+                    "'env_get' expects string, got {}",
+                    name.type_name()
+                )),
             }
         }),
-
         // env_all -> #{"KEY" => "VAL", ...}
         ("env_all", |vm| {
             let map: HashMap<Value, Value> = std::env::vars()
@@ -272,16 +289,12 @@ pub fn io_builtins() -> Vec<(&'static str, BuiltinFn)> {
             vm.push_val(Value::Map(map));
             Ok(())
         }),
-
         // args -> {arg0, arg1, ...}
         ("args", |vm| {
-            let args: Vec<Value> = std::env::args()
-                .map(Value::Str)
-                .collect();
+            let args: Vec<Value> = std::env::args().map(Value::Str).collect();
             vm.push_val(Value::List(args));
             Ok(())
         }),
-
         // JSON/YAML/TOML/Proto are registered in builtins_serial.rs
 
         // ---- Time ----
@@ -293,7 +306,6 @@ pub fn io_builtins() -> Vec<(&'static str, BuiltinFn)> {
             vm.push_val(Value::Int(ms));
             Ok(())
         }),
-
         // sleep_ms: int -> (pauses execution)
         ("sleep_ms", |vm| {
             let val = vm.pop_val()?;

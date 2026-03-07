@@ -1,7 +1,7 @@
-use std::fmt;
-use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
 use crate::opcode::Op;
+use std::collections::HashMap;
+use std::fmt;
+use std::hash::{Hash, Hasher};
 
 #[derive(Debug, Clone)]
 pub enum Value {
@@ -76,7 +76,9 @@ impl fmt::Display for Value {
             Value::List(items) => {
                 write!(f, "{{")?;
                 for (i, item) in items.iter().enumerate() {
-                    if i > 0 { write!(f, ", ")?; }
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
                     write!(f, "{}", item)?;
                 }
                 write!(f, "}}")
@@ -84,7 +86,9 @@ impl fmt::Display for Value {
             Value::Map(map) => {
                 write!(f, "#{{")?;
                 for (i, (k, v)) in map.iter().enumerate() {
-                    if i > 0 { write!(f, ", ")?; }
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
                     write!(f, "{} => {}", k, v)?;
                 }
                 write!(f, "}}")

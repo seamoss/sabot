@@ -8,8 +8,8 @@ pub enum Op {
     PushStr(String),
     PushSymbol(String),
     PushBool(bool),
-    PushList(usize),       // create list from top N stack items
-    PushMap(usize),        // create map from top N*2 stack items (key, val pairs)
+    PushList(usize), // create list from top N stack items
+    PushMap(usize),  // create map from top N*2 stack items (key, val pairs)
 
     // Arithmetic
     Add,
@@ -83,7 +83,7 @@ pub enum Op {
     PrintLn,
 
     // String
-    StrConcat,    // pop two strings, push concatenated
+    StrConcat, // pop two strings, push concatenated
 
     // Special
     Halt,

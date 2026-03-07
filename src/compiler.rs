@@ -11,7 +11,10 @@ pub struct CodeBlock {
 
 impl CodeBlock {
     pub fn new() -> Self {
-        CodeBlock { ops: Vec::new(), lines: Vec::new() }
+        CodeBlock {
+            ops: Vec::new(),
+            lines: Vec::new(),
+        }
     }
     pub fn push(&mut self, op: Op, line: usize) {
         self.ops.push(op);
@@ -162,7 +165,10 @@ impl Compiler {
         }
 
         let line = def.arms.last().map(|a| a.line).unwrap_or(0);
-        code.ops.push(Op::PushStr(format!("No matching pattern in '{}'", def.name)));
+        code.ops.push(Op::PushStr(format!(
+            "No matching pattern in '{}'",
+            def.name
+        )));
         code.lines.push(line);
         code.ops.push(Op::Halt);
         code.lines.push(line);
@@ -183,15 +189,13 @@ impl Compiler {
         code: &mut Vec<Op>,
     ) -> Result<(), String> {
         match pat {
-            Pattern::Literal(lit) => {
-                match lit {
-                    Literal::Int(n) => code.push(Op::MatchLitInt(*n, fail_label)),
-                    Literal::Float(f) => code.push(Op::MatchLitFloat(f.to_bits(), fail_label)),
-                    Literal::Str(s) => code.push(Op::MatchLitStr(s.clone(), fail_label)),
-                    Literal::Symbol(s) => code.push(Op::MatchLitSymbol(s.clone(), fail_label)),
-                    Literal::Bool(b) => code.push(Op::MatchLitBool(*b, fail_label)),
-                }
-            }
+            Pattern::Literal(lit) => match lit {
+                Literal::Int(n) => code.push(Op::MatchLitInt(*n, fail_label)),
+                Literal::Float(f) => code.push(Op::MatchLitFloat(f.to_bits(), fail_label)),
+                Literal::Str(s) => code.push(Op::MatchLitStr(s.clone(), fail_label)),
+                Literal::Symbol(s) => code.push(Op::MatchLitSymbol(s.clone(), fail_label)),
+                Literal::Bool(b) => code.push(Op::MatchLitBool(*b, fail_label)),
+            },
             Pattern::Bind(name) => {
                 let slot = locals.add(name.clone());
                 code.push(Op::MatchBind(slot));

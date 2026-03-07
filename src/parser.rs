@@ -1,5 +1,5 @@
 use crate::ast::*;
-use crate::token::{Token, Spanned, StringPart};
+use crate::token::{Spanned, StringPart, Token};
 
 pub struct Parser {
     tokens: Vec<Spanned>,
@@ -64,13 +64,20 @@ impl Parser {
                 loop {
                     let key = match &self.current().token {
                         Token::Str(s) => s.clone(),
-                        other => return Err(format!("Expected string key in let destructure, got {:?}", other)),
+                        other => {
+                            return Err(format!(
+                                "Expected string key in let destructure, got {:?}",
+                                other
+                            ));
+                        }
                     };
                     self.advance();
                     self.expect(&Token::FatArrow)?;
                     let bind_name = self.expect_ident()?;
                     pairs.push((key, bind_name));
-                    if !self.check(&Token::Comma) { break; }
+                    if !self.check(&Token::Comma) {
+                        break;
+                    }
                     self.advance();
                 }
             }
@@ -85,7 +92,10 @@ impl Parser {
         self.expect(&Token::Assign)?;
         let mut body = Vec::new();
         while !self.at_end()
-            && !matches!(self.current().token, Token::Newline | Token::Semicolon | Token::Eof)
+            && !matches!(
+                self.current().token,
+                Token::Newline | Token::Semicolon | Token::Eof
+            )
         {
             body.push(self.parse_expr()?);
         }
@@ -131,7 +141,12 @@ impl Parser {
 
         let body = self.parse_spanned_body()?;
 
-        Ok(MatchArm { patterns, guard, body, line })
+        Ok(MatchArm {
+            patterns,
+            guard,
+            body,
+            line,
+        })
     }
 
     fn parse_patterns(&mut self) -> Result<Vec<Pattern>, String> {
@@ -174,13 +189,40 @@ impl Parser {
 
     fn parse_single_pattern(&mut self) -> Result<Pattern, String> {
         match &self.current().token {
-            Token::Int(n) => { let n = *n; self.advance(); Ok(Pattern::Literal(Literal::Int(n))) }
-            Token::Float(f) => { let f = *f; self.advance(); Ok(Pattern::Literal(Literal::Float(f))) }
-            Token::Str(s) => { let s = s.clone(); self.advance(); Ok(Pattern::Literal(Literal::Str(s))) }
-            Token::Symbol(s) => { let s = s.clone(); self.advance(); Ok(Pattern::Literal(Literal::Symbol(s))) }
-            Token::Bool(b) => { let b = *b; self.advance(); Ok(Pattern::Literal(Literal::Bool(b))) }
-            Token::Ident(s) if s == "_" => { self.advance(); Ok(Pattern::Wildcard) }
-            Token::Ident(s) => { let s = s.clone(); self.advance(); Ok(Pattern::Bind(s)) }
+            Token::Int(n) => {
+                let n = *n;
+                self.advance();
+                Ok(Pattern::Literal(Literal::Int(n)))
+            }
+            Token::Float(f) => {
+                let f = *f;
+                self.advance();
+                Ok(Pattern::Literal(Literal::Float(f)))
+            }
+            Token::Str(s) => {
+                let s = s.clone();
+                self.advance();
+                Ok(Pattern::Literal(Literal::Str(s)))
+            }
+            Token::Symbol(s) => {
+                let s = s.clone();
+                self.advance();
+                Ok(Pattern::Literal(Literal::Symbol(s)))
+            }
+            Token::Bool(b) => {
+                let b = *b;
+                self.advance();
+                Ok(Pattern::Literal(Literal::Bool(b)))
+            }
+            Token::Ident(s) if s == "_" => {
+                self.advance();
+                Ok(Pattern::Wildcard)
+            }
+            Token::Ident(s) => {
+                let s = s.clone();
+                self.advance();
+                Ok(Pattern::Bind(s))
+            }
             _ => Err(self.error("Expected pattern element")),
         }
     }
@@ -224,11 +266,31 @@ impl Parser {
 
     fn parse_guard_expr(&mut self) -> Result<Expr, String> {
         match &self.current().token {
-            Token::Int(n) => { let n = *n; self.advance(); Ok(Expr::IntLit(n)) }
-            Token::Float(f) => { let f = *f; self.advance(); Ok(Expr::FloatLit(f)) }
-            Token::Str(s) => { let s = s.clone(); self.advance(); Ok(Expr::StrLit(s)) }
-            Token::Bool(b) => { let b = *b; self.advance(); Ok(Expr::BoolLit(b)) }
-            Token::Ident(s) => { let s = s.clone(); self.advance(); Ok(Expr::Word(s)) }
+            Token::Int(n) => {
+                let n = *n;
+                self.advance();
+                Ok(Expr::IntLit(n))
+            }
+            Token::Float(f) => {
+                let f = *f;
+                self.advance();
+                Ok(Expr::FloatLit(f))
+            }
+            Token::Str(s) => {
+                let s = s.clone();
+                self.advance();
+                Ok(Expr::StrLit(s))
+            }
+            Token::Bool(b) => {
+                let b = *b;
+                self.advance();
+                Ok(Expr::BoolLit(b))
+            }
+            Token::Ident(s) => {
+                let s = s.clone();
+                self.advance();
+                Ok(Expr::Word(s))
+            }
             _ => Err(self.error("Expected expression in guard")),
         }
     }
@@ -237,22 +299,21 @@ impl Parser {
         let mut body = Vec::new();
         loop {
             self.skip_newlines();
-            if self.at_end()
-                || self.check(&Token::Semicolon)
-                || self.is_arm_start()
-            {
+            if self.at_end() || self.check(&Token::Semicolon) || self.is_arm_start() {
                 break;
             }
             let line = self.current_line();
             let expr = self.parse_expr()?;
-            body.push(SpannedExpr { expr, line: Some(line) });
+            body.push(SpannedExpr {
+                expr,
+                line: Some(line),
+            });
         }
         Ok(body)
     }
 
     fn is_arm_start(&self) -> bool {
-        matches!(self.current().token, Token::LBracket | Token::LBrace)
-            && self.is_pattern_context()
+        matches!(self.current().token, Token::LBracket | Token::LBrace) && self.is_pattern_context()
     }
 
     fn is_pattern_context(&self) -> bool {
@@ -265,7 +326,9 @@ impl Parser {
                     depth -= 1;
                     if depth == 0 {
                         let mut j = i + 1;
-                        while j < self.tokens.len() && matches!(self.tokens[j].token, Token::Newline) {
+                        while j < self.tokens.len()
+                            && matches!(self.tokens[j].token, Token::Newline)
+                        {
                             j += 1;
                         }
                         if j < self.tokens.len() {
@@ -284,16 +347,39 @@ impl Parser {
 
     fn parse_expr(&mut self) -> Result<Expr, String> {
         match &self.current().token {
-            Token::Int(n) => { let n = *n; self.advance(); Ok(Expr::IntLit(n)) }
-            Token::Float(f) => { let f = *f; self.advance(); Ok(Expr::FloatLit(f)) }
-            Token::Str(s) => { let s = s.clone(); self.advance(); Ok(Expr::StrLit(s)) }
-            Token::Symbol(s) => { let s = s.clone(); self.advance(); Ok(Expr::SymbolLit(s)) }
-            Token::Bool(b) => { let b = *b; self.advance(); Ok(Expr::BoolLit(b)) }
+            Token::Int(n) => {
+                let n = *n;
+                self.advance();
+                Ok(Expr::IntLit(n))
+            }
+            Token::Float(f) => {
+                let f = *f;
+                self.advance();
+                Ok(Expr::FloatLit(f))
+            }
+            Token::Str(s) => {
+                let s = s.clone();
+                self.advance();
+                Ok(Expr::StrLit(s))
+            }
+            Token::Symbol(s) => {
+                let s = s.clone();
+                self.advance();
+                Ok(Expr::SymbolLit(s))
+            }
+            Token::Bool(b) => {
+                let b = *b;
+                self.advance();
+                Ok(Expr::BoolLit(b))
+            }
             Token::StringInterp(parts) => {
-                let ast_parts: Vec<StringInterpPart> = parts.iter().map(|p| match p {
-                    StringPart::Lit(s) => StringInterpPart::Lit(s.clone()),
-                    StringPart::Var(s) => StringInterpPart::Var(s.clone()),
-                }).collect();
+                let ast_parts: Vec<StringInterpPart> = parts
+                    .iter()
+                    .map(|p| match p {
+                        StringPart::Lit(s) => StringInterpPart::Lit(s.clone()),
+                        StringPart::Var(s) => StringInterpPart::Var(s.clone()),
+                    })
+                    .collect();
                 self.advance();
                 Ok(Expr::StringInterp(ast_parts))
             }
@@ -306,24 +392,80 @@ impl Parser {
                     Ok(Expr::Word(s))
                 }
             }
-            Token::Plus => { self.advance(); Ok(Expr::Add) }
-            Token::Minus => { self.advance(); Ok(Expr::Sub) }
-            Token::Star => { self.advance(); Ok(Expr::Mul) }
-            Token::Slash => { self.advance(); Ok(Expr::Div) }
-            Token::Percent => { self.advance(); Ok(Expr::Mod) }
-            Token::Eq => { self.advance(); Ok(Expr::Eq) }
-            Token::NotEq => { self.advance(); Ok(Expr::NotEq) }
-            Token::Lt => { self.advance(); Ok(Expr::Lt) }
-            Token::Gt => { self.advance(); Ok(Expr::Gt) }
-            Token::LtEq => { self.advance(); Ok(Expr::LtEq) }
-            Token::GtEq => { self.advance(); Ok(Expr::GtEq) }
-            Token::And => { self.advance(); Ok(Expr::And) }
-            Token::Or => { self.advance(); Ok(Expr::Or) }
-            Token::Not => { self.advance(); Ok(Expr::Not) }
-            Token::Dot => { self.advance(); Ok(Expr::Compose) }
-            Token::Tilde => { self.advance(); Ok(Expr::Apply) }
-            Token::PushTo(name) => { let n = name.clone(); self.advance(); Ok(Expr::PushTo(n)) }
-            Token::PopFrom(name) => { let n = name.clone(); self.advance(); Ok(Expr::PopFrom(n)) }
+            Token::Plus => {
+                self.advance();
+                Ok(Expr::Add)
+            }
+            Token::Minus => {
+                self.advance();
+                Ok(Expr::Sub)
+            }
+            Token::Star => {
+                self.advance();
+                Ok(Expr::Mul)
+            }
+            Token::Slash => {
+                self.advance();
+                Ok(Expr::Div)
+            }
+            Token::Percent => {
+                self.advance();
+                Ok(Expr::Mod)
+            }
+            Token::Eq => {
+                self.advance();
+                Ok(Expr::Eq)
+            }
+            Token::NotEq => {
+                self.advance();
+                Ok(Expr::NotEq)
+            }
+            Token::Lt => {
+                self.advance();
+                Ok(Expr::Lt)
+            }
+            Token::Gt => {
+                self.advance();
+                Ok(Expr::Gt)
+            }
+            Token::LtEq => {
+                self.advance();
+                Ok(Expr::LtEq)
+            }
+            Token::GtEq => {
+                self.advance();
+                Ok(Expr::GtEq)
+            }
+            Token::And => {
+                self.advance();
+                Ok(Expr::And)
+            }
+            Token::Or => {
+                self.advance();
+                Ok(Expr::Or)
+            }
+            Token::Not => {
+                self.advance();
+                Ok(Expr::Not)
+            }
+            Token::Dot => {
+                self.advance();
+                Ok(Expr::Compose)
+            }
+            Token::Tilde => {
+                self.advance();
+                Ok(Expr::Apply)
+            }
+            Token::PushTo(name) => {
+                let n = name.clone();
+                self.advance();
+                Ok(Expr::PushTo(n))
+            }
+            Token::PopFrom(name) => {
+                let n = name.clone();
+                self.advance();
+                Ok(Expr::PopFrom(n))
+            }
             Token::LBracket => self.parse_quotation(),
             Token::LBrace => self.parse_list(),
             Token::HashBrace => self.parse_map(),
@@ -336,7 +478,9 @@ impl Parser {
         let mut body = Vec::new();
         while !self.check(&Token::RBracket) && !self.at_end() {
             self.skip_newlines();
-            if self.check(&Token::RBracket) { break; }
+            if self.check(&Token::RBracket) {
+                break;
+            }
             body.push(self.parse_expr()?);
         }
         self.expect(&Token::RBracket)?;
@@ -350,7 +494,9 @@ impl Parser {
             elements.push(self.parse_expr()?);
             while self.check(&Token::Comma) {
                 self.advance();
-                if self.check(&Token::RBrace) { break; }
+                if self.check(&Token::RBrace) {
+                    break;
+                }
                 elements.push(self.parse_expr()?);
             }
         }
@@ -373,7 +519,9 @@ impl Parser {
             while self.check(&Token::Comma) {
                 self.advance();
                 self.skip_newlines();
-                if self.check(&Token::RBrace) { break; }
+                if self.check(&Token::RBrace) {
+                    break;
+                }
                 let key = self.parse_expr()?;
                 self.skip_newlines();
                 self.expect(&Token::FatArrow)?;
@@ -409,7 +557,8 @@ impl Parser {
     }
 
     fn check(&self, expected: &Token) -> bool {
-        !self.at_end() && std::mem::discriminant(&self.current().token) == std::mem::discriminant(expected)
+        !self.at_end()
+            && std::mem::discriminant(&self.current().token) == std::mem::discriminant(expected)
     }
 
     fn expect(&mut self, expected: &Token) -> Result<(), String> {
@@ -417,7 +566,11 @@ impl Parser {
             self.advance();
             Ok(())
         } else {
-            Err(self.error(&format!("Expected {:?}, got {:?}", expected, self.current().token)))
+            Err(self.error(&format!(
+                "Expected {:?}, got {:?}",
+                expected,
+                self.current().token
+            )))
         }
     }
 

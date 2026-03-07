@@ -3,7 +3,7 @@
 //! static file serving, and the connection handler.
 
 use std::collections::HashMap;
-use std::io::{Read, Write, BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -28,7 +28,8 @@ pub enum Segment {
 }
 
 pub fn compile_pattern(pattern: &str) -> Vec<Segment> {
-    pattern.split('/')
+    pattern
+        .split('/')
         .filter(|s| !s.is_empty())
         .map(|s| {
             if let Some(name) = s.strip_prefix(':') {
@@ -48,7 +49,9 @@ fn match_route(segments: &[Segment], path_parts: &[&str]) -> Option<Vec<(String,
     for (seg, part) in segments.iter().zip(path_parts.iter()) {
         match seg {
             Segment::Literal(s) => {
-                if s != part { return None; }
+                if s != part {
+                    return None;
+                }
             }
             Segment::Param(name) => {
                 params.push((name.clone(), part.to_string()));
@@ -87,7 +90,9 @@ pub fn parse_request(stream: &mut TcpStream) -> Result<HttpRequest, String> {
 
     // Request line
     let mut request_line = String::new();
-    reader.read_line(&mut request_line).map_err(|e| e.to_string())?;
+    reader
+        .read_line(&mut request_line)
+        .map_err(|e| e.to_string())?;
     let parts: Vec<&str> = request_line.split_whitespace().collect();
     if parts.len() < 2 {
         return Err("Malformed request line".into());
@@ -97,7 +102,10 @@ pub fn parse_request(stream: &mut TcpStream) -> Result<HttpRequest, String> {
     let raw_path = parts[1];
 
     let (path, query) = if let Some(idx) = raw_path.find('?') {
-        (raw_path[..idx].to_string(), parse_query_string(&raw_path[idx + 1..]))
+        (
+            raw_path[..idx].to_string(),
+            parse_query_string(&raw_path[idx + 1..]),
+        )
     } else {
         (raw_path.to_string(), HashMap::new())
     };
@@ -108,7 +116,9 @@ pub fn parse_request(stream: &mut TcpStream) -> Result<HttpRequest, String> {
         let mut line = String::new();
         reader.read_line(&mut line).map_err(|e| e.to_string())?;
         let trimmed = line.trim();
-        if trimmed.is_empty() { break; }
+        if trimmed.is_empty() {
+            break;
+        }
         if let Some(idx) = trimmed.find(':') {
             let key = trimmed[..idx].trim().to_lowercase();
             let val = trimmed[idx + 1..].trim().to_string();
@@ -129,7 +139,13 @@ pub fn parse_request(stream: &mut TcpStream) -> Result<HttpRequest, String> {
         String::new()
     };
 
-    Ok(HttpRequest { method, path, query, headers, body })
+    Ok(HttpRequest {
+        method,
+        path,
+        query,
+        headers,
+        body,
+    })
 }
 
 fn parse_query_string(qs: &str) -> HashMap<String, String> {
@@ -171,8 +187,14 @@ fn url_decode(s: &str) -> String {
 
 // ---- HTTP Response ----
 
-pub fn write_response(stream: &mut TcpStream, status: u16, status_text: &str,
-                      content_type: &str, extra_headers: &[(String, String)], body: &[u8]) {
+pub fn write_response(
+    stream: &mut TcpStream,
+    status: u16,
+    status_text: &str,
+    content_type: &str,
+    extra_headers: &[(String, String)],
+    body: &[u8],
+) {
     let mut resp = format!("HTTP/1.1 {} {}\r\n", status, status_text);
     resp.push_str(&format!("Content-Type: {}\r\n", content_type));
     resp.push_str(&format!("Content-Length: {}\r\n", body.len()));
@@ -188,10 +210,17 @@ pub fn write_response(stream: &mut TcpStream, status: u16, status_text: &str,
 
 pub fn status_text(code: u16) -> &'static str {
     match code {
-        200 => "OK", 201 => "Created", 204 => "No Content",
-        301 => "Moved Permanently", 302 => "Found", 304 => "Not Modified",
-        400 => "Bad Request", 401 => "Unauthorized", 403 => "Forbidden",
-        404 => "Not Found", 405 => "Method Not Allowed",
+        200 => "OK",
+        201 => "Created",
+        204 => "No Content",
+        301 => "Moved Permanently",
+        302 => "Found",
+        304 => "Not Modified",
+        400 => "Bad Request",
+        401 => "Unauthorized",
+        403 => "Forbidden",
+        404 => "Not Found",
+        405 => "Method Not Allowed",
         500 => "Internal Server Error",
         _ => "OK",
     }
@@ -234,17 +263,22 @@ fn request_to_value(req: &HttpRequest, params: &[(String, String)]) -> Value {
     map.insert(Value::Str("path".into()), Value::Str(req.path.clone()));
     map.insert(Value::Str("body".into()), Value::Str(req.body.clone()));
 
-    let query_map: HashMap<Value, Value> = req.query.iter()
+    let query_map: HashMap<Value, Value> = req
+        .query
+        .iter()
         .map(|(k, v)| (Value::Str(k.clone()), Value::Str(v.clone())))
         .collect();
     map.insert(Value::Str("query".into()), Value::Map(query_map));
 
-    let header_map: HashMap<Value, Value> = req.headers.iter()
+    let header_map: HashMap<Value, Value> = req
+        .headers
+        .iter()
         .map(|(k, v)| (Value::Str(k.clone()), Value::Str(v.clone())))
         .collect();
     map.insert(Value::Str("headers".into()), Value::Map(header_map));
 
-    let param_map: HashMap<Value, Value> = params.iter()
+    let param_map: HashMap<Value, Value> = params
+        .iter()
         .map(|(k, v)| (Value::Str(k.clone()), Value::Str(v.clone())))
         .collect();
     map.insert(Value::Str("params".into()), Value::Map(param_map));
@@ -275,7 +309,9 @@ fn value_to_response(val: &Value) -> SaboResponse {
                 if let Value::Str(key) = k {
                     match key.as_str() {
                         "status" => {
-                            if let Value::Int(n) = v { resp.status = *n as u16; }
+                            if let Value::Int(n) = v {
+                                resp.status = *n as u16;
+                            }
                         }
                         "body" => {
                             resp.body = match v {
@@ -284,7 +320,9 @@ fn value_to_response(val: &Value) -> SaboResponse {
                             };
                         }
                         "content_type" => {
-                            if let Value::Str(s) = v { resp.content_type = s.clone(); }
+                            if let Value::Str(s) = v {
+                                resp.content_type = s.clone();
+                            }
                         }
                         "headers" => {
                             if let Value::Map(hpairs) = v {
@@ -300,8 +338,12 @@ fn value_to_response(val: &Value) -> SaboResponse {
                 }
             }
         }
-        Value::Str(s) => { resp.body = s.clone(); }
-        other => { resp.body = format!("{}", other); }
+        Value::Str(s) => {
+            resp.body = s.clone();
+        }
+        other => {
+            resp.body = format!("{}", other);
+        }
     }
 
     resp
@@ -309,9 +351,10 @@ fn value_to_response(val: &Value) -> SaboResponse {
 
 // ---- Static file serving ----
 
-fn try_serve_static(req: &HttpRequest, static_dirs: &[StaticDir],
-                    stream: &mut TcpStream) -> bool {
-    if req.method != "GET" { return false; }
+fn try_serve_static(req: &HttpRequest, static_dirs: &[StaticDir], stream: &mut TcpStream) -> bool {
+    if req.method != "GET" {
+        return false;
+    }
 
     for sd in static_dirs {
         let prefix = sd.url_prefix.trim_end_matches('/');
@@ -320,7 +363,9 @@ fn try_serve_static(req: &HttpRequest, static_dirs: &[StaticDir],
             let rest = rest.trim_start_matches('/');
 
             // Prevent directory traversal
-            if rest.contains("..") { continue; }
+            if rest.contains("..") {
+                continue;
+            }
 
             let file_path = if rest.is_empty() {
                 format!("{}/index.html", sd.fs_path)
@@ -337,7 +382,14 @@ fn try_serve_static(req: &HttpRequest, static_dirs: &[StaticDir],
             // Try index.html for directory paths
             let index_path = format!("{}/index.html", file_path.trim_end_matches('/'));
             if let Ok(contents) = std::fs::read(&index_path) {
-                write_response(stream, 200, "OK", "text/html; charset=utf-8", &[], &contents);
+                write_response(
+                    stream,
+                    200,
+                    "OK",
+                    "text/html; charset=utf-8",
+                    &[],
+                    &contents,
+                );
                 return true;
             }
         }
@@ -358,7 +410,14 @@ pub fn handle_connection(
     let req = match parse_request(&mut stream) {
         Ok(r) => r,
         Err(_) => {
-            write_response(&mut stream, 400, "Bad Request", "text/plain", &[], b"Bad Request");
+            write_response(
+                &mut stream,
+                400,
+                "Bad Request",
+                "text/plain",
+                &[],
+                b"Bad Request",
+            );
             return;
         }
     };
@@ -376,7 +435,9 @@ pub fn handle_connection(
     let path_parts: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
 
     for route in routes {
-        if route.method != method && route.method != "*" { continue; }
+        if route.method != method && route.method != "*" {
+            continue;
+        }
         if let Some(params) = match_route(&route.segments, &path_parts) {
             let req_val = request_to_value(&req, &params);
 
@@ -384,30 +445,48 @@ pub fn handle_connection(
             child.push_val(req_val);
 
             match child.run(route.handler.clone()) {
-                Ok(()) => {
-                    match child.pop_val() {
-                        Ok(val) => {
-                            let resp = value_to_response(&val);
-                            let body_len = resp.body.len();
-                            write_response(&mut stream, resp.status,
-                                          status_text(resp.status),
-                                          &resp.content_type,
-                                          &resp.headers,
-                                          resp.body.as_bytes());
-                            log_request(&method, &path, resp.status,
-                                       &format!("{} bytes", body_len), start);
-                        }
-                        Err(_) => {
-                            write_response(&mut stream, 500, "Internal Server Error",
-                                          "text/plain", &[], b"Handler returned no response");
-                            log_request(&method, &path, 500, "no response", start);
-                        }
+                Ok(()) => match child.pop_val() {
+                    Ok(val) => {
+                        let resp = value_to_response(&val);
+                        let body_len = resp.body.len();
+                        write_response(
+                            &mut stream,
+                            resp.status,
+                            status_text(resp.status),
+                            &resp.content_type,
+                            &resp.headers,
+                            resp.body.as_bytes(),
+                        );
+                        log_request(
+                            &method,
+                            &path,
+                            resp.status,
+                            &format!("{} bytes", body_len),
+                            start,
+                        );
                     }
-                }
+                    Err(_) => {
+                        write_response(
+                            &mut stream,
+                            500,
+                            "Internal Server Error",
+                            "text/plain",
+                            &[],
+                            b"Handler returned no response",
+                        );
+                        log_request(&method, &path, 500, "no response", start);
+                    }
+                },
                 Err(e) => {
                     let msg = format!("500 Internal Server Error\n\n{}", e);
-                    write_response(&mut stream, 500, "Internal Server Error",
-                                  "text/plain", &[], msg.as_bytes());
+                    write_response(
+                        &mut stream,
+                        500,
+                        "Internal Server Error",
+                        "text/plain",
+                        &[],
+                        msg.as_bytes(),
+                    );
                     log_request(&method, &path, 500, &e, start);
                 }
             }
@@ -416,8 +495,14 @@ pub fn handle_connection(
     }
 
     // 404
-    write_response(&mut stream, 404, "Not Found",
-                  "text/plain; charset=utf-8", &[], b"404 Not Found");
+    write_response(
+        &mut stream,
+        404,
+        "Not Found",
+        "text/plain; charset=utf-8",
+        &[],
+        b"404 Not Found",
+    );
     log_request(&method, &path, 404, "", start);
 }
 
@@ -428,6 +513,9 @@ fn log_request(method: &str, path: &str, status: u16, detail: &str, start: Insta
     if detail.is_empty() {
         println!("  {} {} -> {} [{}.{}ms]", method, path, status, ms, frac);
     } else {
-        println!("  {} {} -> {} [{}.{}ms] {}", method, path, status, ms, frac, detail);
+        println!(
+            "  {} {} -> {} [{}.{}ms] {}",
+            method, path, status, ms, frac, detail
+        );
     }
 }

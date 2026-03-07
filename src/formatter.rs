@@ -167,7 +167,10 @@ fn format_word_def(lines: &[&str]) -> (Vec<String>, usize) {
         output.push(format!(": {}", header));
         for arm in &arms {
             if arm.has_guard {
-                output.push(format!("  {} where {} -> {}", arm.pattern, arm.guard_text, arm.body));
+                output.push(format!(
+                    "  {} where {} -> {}",
+                    arm.pattern, arm.guard_text, arm.body
+                ));
             } else {
                 let arm_line = format!("  {} -> {}", arm.pattern, arm.body);
                 if let Some(ref c) = arm.comment {
@@ -201,7 +204,9 @@ fn parse_word_structure(source: &str) -> (String, Vec<ArmInfo>, Option<String>) 
 
     // Extract the colon and name
     let after_colon = source.strip_prefix(':').unwrap().trim();
-    let name_end = after_colon.find(|c: char| c.is_whitespace() || c == '[').unwrap_or(after_colon.len());
+    let name_end = after_colon
+        .find(|c: char| c.is_whitespace() || c == '[')
+        .unwrap_or(after_colon.len());
     let name = after_colon[..name_end].trim().to_string();
     let rest = after_colon[name_end..].trim();
 
@@ -212,21 +217,37 @@ fn parse_word_structure(source: &str) -> (String, Vec<ArmInfo>, Option<String>) 
         let mut in_str = false;
         let mut esc = false;
         for (i, ch) in rest.char_indices() {
-            if esc { esc = false; continue; }
-            if in_str {
-                if ch == '\\' { esc = true; }
-                if ch == '"' { in_str = false; }
+            if esc {
+                esc = false;
                 continue;
             }
-            if ch == '"' { in_str = true; continue; }
-            if ch == ';' { last_semi = Some(i); }
+            if in_str {
+                if ch == '\\' {
+                    esc = true;
+                }
+                if ch == '"' {
+                    in_str = false;
+                }
+                continue;
+            }
+            if ch == '"' {
+                in_str = true;
+                continue;
+            }
+            if ch == ';' {
+                last_semi = Some(i);
+            }
         }
         match last_semi {
             Some(pos) => {
                 let before = rest[..pos].trim();
-                let after = rest[pos+1..].trim();
+                let after = rest[pos + 1..].trim();
                 let comment = if after.starts_with("--") || !after.is_empty() {
-                    if after.starts_with("--") { Some(after.to_string()) } else { None }
+                    if after.starts_with("--") {
+                        Some(after.to_string())
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 };
@@ -255,7 +276,9 @@ fn parse_arms(body: &str) -> Vec<ArmInfo> {
         while i < chars.len() && (chars[i].is_whitespace()) {
             i += 1;
         }
-        if i >= chars.len() { break; }
+        if i >= chars.len() {
+            break;
+        }
 
         // Expect a pattern starting with `[` or `{[`
         // Find the pattern (could be [stuff] or {[stuff]})
@@ -274,30 +297,38 @@ fn parse_arms(body: &str) -> Vec<ArmInfo> {
         }
 
         // Skip whitespace
-        while i < chars.len() && chars[i].is_whitespace() { i += 1; }
+        while i < chars.len() && chars[i].is_whitespace() {
+            i += 1;
+        }
 
         // Check for `where` guard
         let mut has_guard = false;
         let mut guard_text = String::new();
         if i + 5 <= chars.len() {
-            let word: String = chars[i..std::cmp::min(i+5, chars.len())].iter().collect();
+            let word: String = chars[i..std::cmp::min(i + 5, chars.len())].iter().collect();
             if word == "where" {
                 has_guard = true;
                 i += 5;
                 // Read until `->`
                 let arrow_pos = find_arrow(&chars, i);
-                guard_text = chars[i..arrow_pos].iter().collect::<String>().trim().to_string();
+                guard_text = chars[i..arrow_pos]
+                    .iter()
+                    .collect::<String>()
+                    .trim()
+                    .to_string();
                 i = arrow_pos;
             }
         }
 
         // Expect `->`
-        if i + 1 < chars.len() && chars[i] == '-' && chars[i+1] == '>' {
+        if i + 1 < chars.len() && chars[i] == '-' && chars[i + 1] == '>' {
             i += 2;
         }
 
         // Skip whitespace
-        while i < chars.len() && chars[i].is_whitespace() { i += 1; }
+        while i < chars.len() && chars[i].is_whitespace() {
+            i += 1;
+        }
 
         // Read body until next arm pattern `[` at depth 0, or end
         let body_start = i;
@@ -328,7 +359,9 @@ fn find_pattern_end(chars: &[char], start: usize) -> usize {
     let mut i = start;
     let mut depth = 0;
     loop {
-        if i >= chars.len() { return i; }
+        if i >= chars.len() {
+            return i;
+        }
         match chars[i] {
             '[' | '{' => depth += 1,
             ']' | '}' => {
@@ -351,7 +384,7 @@ fn find_arrow(chars: &[char], start: usize) -> usize {
         match chars[i] {
             '[' | '{' => depth += 1,
             ']' | '}' => depth -= 1,
-            '-' if depth == 0 && chars[i+1] == '>' => return i,
+            '-' if depth == 0 && chars[i + 1] == '>' => return i,
             _ => {}
         }
         i += 1;
@@ -367,14 +400,26 @@ fn find_body_end(chars: &[char], start: usize) -> usize {
     let mut esc = false;
 
     while i < chars.len() {
-        if esc { esc = false; i += 1; continue; }
-        if in_str {
-            if chars[i] == '\\' { esc = true; }
-            if chars[i] == '"' { in_str = false; }
+        if esc {
+            esc = false;
             i += 1;
             continue;
         }
-        if chars[i] == '"' { in_str = true; i += 1; continue; }
+        if in_str {
+            if chars[i] == '\\' {
+                esc = true;
+            }
+            if chars[i] == '"' {
+                in_str = false;
+            }
+            i += 1;
+            continue;
+        }
+        if chars[i] == '"' {
+            in_str = true;
+            i += 1;
+            continue;
+        }
 
         match chars[i] {
             '[' if depth == 0 => {
@@ -386,7 +431,7 @@ fn find_body_end(chars: &[char], start: usize) -> usize {
                 }
                 depth += 1;
             }
-            '{' if depth == 0 && i + 1 < chars.len() && chars[i+1] == '[' => {
+            '{' if depth == 0 && i + 1 < chars.len() && chars[i + 1] == '[' => {
                 // List pattern start for new arm
                 if is_arm_start(chars, start, i) {
                     return i;
@@ -394,7 +439,11 @@ fn find_body_end(chars: &[char], start: usize) -> usize {
                 depth += 1;
             }
             '[' | '{' => depth += 1,
-            ']' | '}' => { if depth > 0 { depth -= 1; } }
+            ']' | '}' => {
+                if depth > 0 {
+                    depth -= 1;
+                }
+            }
             _ => {}
         }
         i += 1;
@@ -406,25 +455,33 @@ fn find_body_end(chars: &[char], start: usize) -> usize {
 /// An arm pattern is `[...] ->` or `[...] where ... ->`.
 /// A quotation like `[2 *]` is NOT followed by `->` at the same level.
 fn is_arm_start(chars: &[char], body_start: usize, pos: usize) -> bool {
-    if pos == body_start { return false; }
+    if pos == body_start {
+        return false;
+    }
 
     // Must be preceded by whitespace
-    if pos > 0 && !chars[pos - 1].is_whitespace() { return false; }
+    if pos > 0 && !chars[pos - 1].is_whitespace() {
+        return false;
+    }
 
     // Look ahead: find matching `]`, then check if `->` or `where` follows
     let close = find_pattern_end(chars, pos);
-    if close >= chars.len() { return false; }
+    if close >= chars.len() {
+        return false;
+    }
 
     // Skip whitespace after closing bracket
     let mut j = close;
-    while j < chars.len() && chars[j].is_whitespace() { j += 1; }
+    while j < chars.len() && chars[j].is_whitespace() {
+        j += 1;
+    }
 
     // Check for `->` or `where`
     if j + 1 < chars.len() && chars[j] == '-' && chars[j + 1] == '>' {
         return true;
     }
     if j + 5 <= chars.len() {
-        let word: String = chars[j..j+5].iter().collect();
+        let word: String = chars[j..j + 5].iter().collect();
         if word == "where" {
             return true;
         }
@@ -438,7 +495,9 @@ fn normalize_spaces(s: &str) -> String {
     let mut prev_space = false;
     for ch in s.chars() {
         if ch.is_whitespace() {
-            if !prev_space { result.push(' '); }
+            if !prev_space {
+                result.push(' ');
+            }
             prev_space = true;
         } else {
             result.push(ch);

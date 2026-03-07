@@ -1,9 +1,9 @@
 // Serialization builtins: JSON, YAML, TOML, and binary (protobuf-style) encoding.
 // All text formats share a common Value <-> serde conversion layer.
 
-use std::collections::HashMap;
 use crate::value::Value;
 use crate::vm::VM;
+use std::collections::HashMap;
 
 // ============================================================
 // Shared: Sabo Value <-> serde_json::Value conversion
@@ -19,11 +19,10 @@ fn sabo_to_serde(val: &Value) -> serde_json::Value {
         Value::Symbol(s) if s == "null" => serde_json::Value::Null,
         Value::Symbol(s) => serde_json::Value::String(s.clone()),
         Value::Bool(b) => serde_json::Value::Bool(*b),
-        Value::List(items) => {
-            serde_json::Value::Array(items.iter().map(sabo_to_serde).collect())
-        }
+        Value::List(items) => serde_json::Value::Array(items.iter().map(sabo_to_serde).collect()),
         Value::Map(map) => {
-            let obj: serde_json::Map<String, serde_json::Value> = map.iter()
+            let obj: serde_json::Map<String, serde_json::Value> = map
+                .iter()
                 .map(|(k, v)| (key_to_string(k), sabo_to_serde(v)))
                 .collect();
             serde_json::Value::Object(obj)
@@ -46,11 +45,10 @@ fn serde_to_sabo(val: serde_json::Value) -> Value {
             }
         }
         serde_json::Value::String(s) => Value::Str(s),
-        serde_json::Value::Array(arr) => {
-            Value::List(arr.into_iter().map(serde_to_sabo).collect())
-        }
+        serde_json::Value::Array(arr) => Value::List(arr.into_iter().map(serde_to_sabo).collect()),
         serde_json::Value::Object(obj) => {
-            let map: HashMap<Value, Value> = obj.into_iter()
+            let map: HashMap<Value, Value> = obj
+                .into_iter()
                 .map(|(k, v)| (Value::Str(k), serde_to_sabo(v)))
                 .collect();
             Value::Map(map)
@@ -75,20 +73,22 @@ fn json_parse(vm: &mut VM) -> Result<(), String> {
     let val = vm.pop_val()?;
     match val {
         Value::Str(s) => {
-            let parsed: serde_json::Value = serde_json::from_str(&s)
-                .map_err(|e| format!("JSON parse error: {}", e))?;
+            let parsed: serde_json::Value =
+                serde_json::from_str(&s).map_err(|e| format!("JSON parse error: {}", e))?;
             vm.push_val(serde_to_sabo(parsed));
             Ok(())
         }
-        _ => Err(format!("'json_parse' expects string, got {}", val.type_name())),
+        _ => Err(format!(
+            "'json_parse' expects string, got {}",
+            val.type_name()
+        )),
     }
 }
 
 fn json_encode(vm: &mut VM) -> Result<(), String> {
     let val = vm.pop_val()?;
     let json = sabo_to_serde(&val);
-    let s = serde_json::to_string(&json)
-        .map_err(|e| format!("JSON encode error: {}", e))?;
+    let s = serde_json::to_string(&json).map_err(|e| format!("JSON encode error: {}", e))?;
     vm.push_val(Value::Str(s));
     Ok(())
 }
@@ -96,8 +96,7 @@ fn json_encode(vm: &mut VM) -> Result<(), String> {
 fn json_pretty(vm: &mut VM) -> Result<(), String> {
     let val = vm.pop_val()?;
     let json = sabo_to_serde(&val);
-    let s = serde_json::to_string_pretty(&json)
-        .map_err(|e| format!("JSON encode error: {}", e))?;
+    let s = serde_json::to_string_pretty(&json).map_err(|e| format!("JSON encode error: {}", e))?;
     vm.push_val(Value::Str(s));
     Ok(())
 }
@@ -124,7 +123,8 @@ fn yaml_value_to_sabo(val: serde_yaml::Value) -> Value {
             Value::List(arr.into_iter().map(yaml_value_to_sabo).collect())
         }
         serde_yaml::Value::Mapping(map) => {
-            let m: HashMap<Value, Value> = map.into_iter()
+            let m: HashMap<Value, Value> = map
+                .into_iter()
                 .map(|(k, v)| (yaml_value_to_sabo(k), yaml_value_to_sabo(v)))
                 .collect();
             Value::Map(m)
@@ -141,11 +141,10 @@ fn sabo_to_yaml(val: &Value) -> serde_yaml::Value {
         Value::Symbol(s) if s == "null" => serde_yaml::Value::Null,
         Value::Symbol(s) => serde_yaml::Value::String(s.clone()),
         Value::Bool(b) => serde_yaml::Value::Bool(*b),
-        Value::List(items) => {
-            serde_yaml::Value::Sequence(items.iter().map(sabo_to_yaml).collect())
-        }
+        Value::List(items) => serde_yaml::Value::Sequence(items.iter().map(sabo_to_yaml).collect()),
         Value::Map(map) => {
-            let m: serde_yaml::Mapping = map.iter()
+            let m: serde_yaml::Mapping = map
+                .iter()
                 .map(|(k, v)| (sabo_to_yaml(k), sabo_to_yaml(v)))
                 .collect();
             serde_yaml::Value::Mapping(m)
@@ -158,20 +157,22 @@ fn yaml_parse(vm: &mut VM) -> Result<(), String> {
     let val = vm.pop_val()?;
     match val {
         Value::Str(s) => {
-            let parsed: serde_yaml::Value = serde_yaml::from_str(&s)
-                .map_err(|e| format!("YAML parse error: {}", e))?;
+            let parsed: serde_yaml::Value =
+                serde_yaml::from_str(&s).map_err(|e| format!("YAML parse error: {}", e))?;
             vm.push_val(yaml_value_to_sabo(parsed));
             Ok(())
         }
-        _ => Err(format!("'yaml_parse' expects string, got {}", val.type_name())),
+        _ => Err(format!(
+            "'yaml_parse' expects string, got {}",
+            val.type_name()
+        )),
     }
 }
 
 fn yaml_encode(vm: &mut VM) -> Result<(), String> {
     let val = vm.pop_val()?;
     let yaml = sabo_to_yaml(&val);
-    let s = serde_yaml::to_string(&yaml)
-        .map_err(|e| format!("YAML encode error: {}", e))?;
+    let s = serde_yaml::to_string(&yaml).map_err(|e| format!("YAML encode error: {}", e))?;
     vm.push_val(Value::Str(s));
     Ok(())
 }
@@ -187,11 +188,10 @@ fn toml_value_to_sabo(val: toml::Value) -> Value {
         toml::Value::Float(f) => Value::Float(f),
         toml::Value::Boolean(b) => Value::Bool(b),
         toml::Value::Datetime(dt) => Value::Str(dt.to_string()),
-        toml::Value::Array(arr) => {
-            Value::List(arr.into_iter().map(toml_value_to_sabo).collect())
-        }
+        toml::Value::Array(arr) => Value::List(arr.into_iter().map(toml_value_to_sabo).collect()),
         toml::Value::Table(table) => {
-            let map: HashMap<Value, Value> = table.into_iter()
+            let map: HashMap<Value, Value> = table
+                .into_iter()
                 .map(|(k, v)| (Value::Str(k), toml_value_to_sabo(v)))
                 .collect();
             Value::Map(map)
@@ -225,12 +225,14 @@ fn toml_parse(vm: &mut VM) -> Result<(), String> {
     let val = vm.pop_val()?;
     match val {
         Value::Str(s) => {
-            let parsed: toml::Value = s.parse()
-                .map_err(|e| format!("TOML parse error: {}", e))?;
+            let parsed: toml::Value = s.parse().map_err(|e| format!("TOML parse error: {}", e))?;
             vm.push_val(toml_value_to_sabo(parsed));
             Ok(())
         }
-        _ => Err(format!("'toml_parse' expects string, got {}", val.type_name())),
+        _ => Err(format!(
+            "'toml_parse' expects string, got {}",
+            val.type_name()
+        )),
     }
 }
 
@@ -239,10 +241,10 @@ fn toml_encode(vm: &mut VM) -> Result<(), String> {
     let toml_val = sabo_to_toml(&val)?;
     // toml::to_string requires a table at the top level
     let s = match &toml_val {
-        toml::Value::Table(_) => toml::to_string(&toml_val)
-            .map_err(|e| format!("TOML encode error: {}", e))?,
-        _ => toml::to_string(&toml_val)
-            .map_err(|e| format!("TOML encode error: {}", e))?,
+        toml::Value::Table(_) => {
+            toml::to_string(&toml_val).map_err(|e| format!("TOML encode error: {}", e))?
+        }
+        _ => toml::to_string(&toml_val).map_err(|e| format!("TOML encode error: {}", e))?,
     };
     vm.push_val(Value::Str(s));
     Ok(())
@@ -321,41 +323,57 @@ fn proto_decode_value(bytes: &[u8], pos: usize) -> Result<(Value, usize), String
     match tag {
         0x00 => Ok((Value::Symbol("null".into()), i)),
         0x01 => {
-            if i >= bytes.len() { return Err("Truncated bool".into()); }
+            if i >= bytes.len() {
+                return Err("Truncated bool".into());
+            }
             let val = bytes[i] != 0;
             Ok((Value::Bool(val), i + 1))
         }
         0x02 => {
-            if i + 8 > bytes.len() { return Err("Truncated int".into()); }
-            let n = i64::from_be_bytes(bytes[i..i+8].try_into().unwrap());
+            if i + 8 > bytes.len() {
+                return Err("Truncated int".into());
+            }
+            let n = i64::from_be_bytes(bytes[i..i + 8].try_into().unwrap());
             Ok((Value::Int(n), i + 8))
         }
         0x03 => {
-            if i + 8 > bytes.len() { return Err("Truncated float".into()); }
-            let f = f64::from_be_bytes(bytes[i..i+8].try_into().unwrap());
+            if i + 8 > bytes.len() {
+                return Err("Truncated float".into());
+            }
+            let f = f64::from_be_bytes(bytes[i..i + 8].try_into().unwrap());
             Ok((Value::Float(f), i + 8))
         }
         0x04 => {
-            if i + 4 > bytes.len() { return Err("Truncated string length".into()); }
-            let len = u32::from_be_bytes(bytes[i..i+4].try_into().unwrap()) as usize;
+            if i + 4 > bytes.len() {
+                return Err("Truncated string length".into());
+            }
+            let len = u32::from_be_bytes(bytes[i..i + 4].try_into().unwrap()) as usize;
             i += 4;
-            if i + len > bytes.len() { return Err("Truncated string data".into()); }
-            let s = String::from_utf8(bytes[i..i+len].to_vec())
+            if i + len > bytes.len() {
+                return Err("Truncated string data".into());
+            }
+            let s = String::from_utf8(bytes[i..i + len].to_vec())
                 .map_err(|e| format!("Invalid UTF-8 in string: {}", e))?;
             Ok((Value::Str(s), i + len))
         }
         0x05 => {
-            if i + 4 > bytes.len() { return Err("Truncated symbol length".into()); }
-            let len = u32::from_be_bytes(bytes[i..i+4].try_into().unwrap()) as usize;
+            if i + 4 > bytes.len() {
+                return Err("Truncated symbol length".into());
+            }
+            let len = u32::from_be_bytes(bytes[i..i + 4].try_into().unwrap()) as usize;
             i += 4;
-            if i + len > bytes.len() { return Err("Truncated symbol data".into()); }
-            let s = String::from_utf8(bytes[i..i+len].to_vec())
+            if i + len > bytes.len() {
+                return Err("Truncated symbol data".into());
+            }
+            let s = String::from_utf8(bytes[i..i + len].to_vec())
                 .map_err(|e| format!("Invalid UTF-8 in symbol: {}", e))?;
             Ok((Value::Symbol(s), i + len))
         }
         0x06 => {
-            if i + 4 > bytes.len() { return Err("Truncated list length".into()); }
-            let count = u32::from_be_bytes(bytes[i..i+4].try_into().unwrap()) as usize;
+            if i + 4 > bytes.len() {
+                return Err("Truncated list length".into());
+            }
+            let count = u32::from_be_bytes(bytes[i..i + 4].try_into().unwrap()) as usize;
             i += 4;
             let mut items = Vec::with_capacity(count);
             for _ in 0..count {
@@ -366,8 +384,10 @@ fn proto_decode_value(bytes: &[u8], pos: usize) -> Result<(Value, usize), String
             Ok((Value::List(items), i))
         }
         0x07 => {
-            if i + 4 > bytes.len() { return Err("Truncated map length".into()); }
-            let count = u32::from_be_bytes(bytes[i..i+4].try_into().unwrap()) as usize;
+            if i + 4 > bytes.len() {
+                return Err("Truncated map length".into());
+            }
+            let count = u32::from_be_bytes(bytes[i..i + 4].try_into().unwrap()) as usize;
             i += 4;
             let mut map = HashMap::with_capacity(count);
             for _ in 0..count {
@@ -397,12 +417,13 @@ fn proto_decode(vm: &mut VM) -> Result<(), String> {
     let val = vm.pop_val()?;
     match val {
         Value::List(byte_list) => {
-            let bytes: Result<Vec<u8>, String> = byte_list.iter().map(|v| {
-                match v {
+            let bytes: Result<Vec<u8>, String> = byte_list
+                .iter()
+                .map(|v| match v {
                     Value::Int(n) if *n >= 0 && *n <= 255 => Ok(*n as u8),
                     _ => Err("'proto_decode' expects list of byte values (0-255)".into()),
-                }
-            }).collect();
+                })
+                .collect();
             let bytes = bytes?;
             let (val, _) = proto_decode_value(&bytes, 0)?;
             vm.push_val(val);
@@ -414,7 +435,10 @@ fn proto_decode(vm: &mut VM) -> Result<(), String> {
             vm.push_val(val);
             Ok(())
         }
-        _ => Err(format!("'proto_decode' expects list of bytes, got {}", val.type_name())),
+        _ => Err(format!(
+            "'proto_decode' expects list of bytes, got {}",
+            val.type_name()
+        )),
     }
 }
 

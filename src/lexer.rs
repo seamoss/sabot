@@ -49,46 +49,123 @@ impl Lexer {
                 self.advance();
                 if !self.at_end() && self.peek() == '{' {
                     self.advance();
-                    Ok(Spanned { token: Token::HashBrace, span })
+                    Ok(Spanned {
+                        token: Token::HashBrace,
+                        span,
+                    })
                 } else {
-                    Err(format!("Unexpected '#' at {}:{}, did you mean '#{{' for a map?", span.line, span.col))
+                    Err(format!(
+                        "Unexpected '#' at {}:{}, did you mean '#{{' for a map?",
+                        span.line, span.col
+                    ))
                 }
             }
             ':' => {
                 let span = self.current_span();
                 self.advance();
                 if self.at_end() || self.peek().is_whitespace() || self.peek() == '\n' {
-                    Ok(Spanned { token: Token::Colon, span })
+                    Ok(Spanned {
+                        token: Token::Colon,
+                        span,
+                    })
                 } else {
                     let name = self.read_ident_str();
-                    Ok(Spanned { token: Token::Symbol(name), span })
+                    Ok(Spanned {
+                        token: Token::Symbol(name),
+                        span,
+                    })
                 }
             }
-            ';' => { let sp = self.spanned(Token::Semicolon); self.advance(); Ok(sp) }
-            '[' => { let sp = self.spanned(Token::LBracket); self.advance(); Ok(sp) }
-            ']' => { let sp = self.spanned(Token::RBracket); self.advance(); Ok(sp) }
-            '{' => { let sp = self.spanned(Token::LBrace); self.advance(); Ok(sp) }
-            '}' => { let sp = self.spanned(Token::RBrace); self.advance(); Ok(sp) }
-            '(' => { let sp = self.spanned(Token::LParen); self.advance(); Ok(sp) }
-            ')' => { let sp = self.spanned(Token::RParen); self.advance(); Ok(sp) }
-            ',' => { let sp = self.spanned(Token::Comma); self.advance(); Ok(sp) }
-            '.' => { let sp = self.spanned(Token::Dot); self.advance(); Ok(sp) }
-            '~' => { let sp = self.spanned(Token::Tilde); self.advance(); Ok(sp) }
-            '+' => { let sp = self.spanned(Token::Plus); self.advance(); Ok(sp) }
-            '*' => { let sp = self.spanned(Token::Star); self.advance(); Ok(sp) }
-            '/' => { let sp = self.spanned(Token::Slash); self.advance(); Ok(sp) }
-            '%' => { let sp = self.spanned(Token::Percent); self.advance(); Ok(sp) }
+            ';' => {
+                let sp = self.spanned(Token::Semicolon);
+                self.advance();
+                Ok(sp)
+            }
+            '[' => {
+                let sp = self.spanned(Token::LBracket);
+                self.advance();
+                Ok(sp)
+            }
+            ']' => {
+                let sp = self.spanned(Token::RBracket);
+                self.advance();
+                Ok(sp)
+            }
+            '{' => {
+                let sp = self.spanned(Token::LBrace);
+                self.advance();
+                Ok(sp)
+            }
+            '}' => {
+                let sp = self.spanned(Token::RBrace);
+                self.advance();
+                Ok(sp)
+            }
+            '(' => {
+                let sp = self.spanned(Token::LParen);
+                self.advance();
+                Ok(sp)
+            }
+            ')' => {
+                let sp = self.spanned(Token::RParen);
+                self.advance();
+                Ok(sp)
+            }
+            ',' => {
+                let sp = self.spanned(Token::Comma);
+                self.advance();
+                Ok(sp)
+            }
+            '.' => {
+                let sp = self.spanned(Token::Dot);
+                self.advance();
+                Ok(sp)
+            }
+            '~' => {
+                let sp = self.spanned(Token::Tilde);
+                self.advance();
+                Ok(sp)
+            }
+            '+' => {
+                let sp = self.spanned(Token::Plus);
+                self.advance();
+                Ok(sp)
+            }
+            '*' => {
+                let sp = self.spanned(Token::Star);
+                self.advance();
+                Ok(sp)
+            }
+            '/' => {
+                let sp = self.spanned(Token::Slash);
+                self.advance();
+                Ok(sp)
+            }
+            '%' => {
+                let sp = self.spanned(Token::Percent);
+                self.advance();
+                Ok(sp)
+            }
             '-' => {
                 let span = self.current_span();
                 self.advance();
                 if !self.at_end() && self.peek() == '>' {
                     self.advance();
-                    Ok(Spanned { token: Token::Arrow, span })
+                    Ok(Spanned {
+                        token: Token::Arrow,
+                        span,
+                    })
                 } else if !self.at_end() && self.peek().is_ascii_digit() {
                     let num_tok = self.read_number(true)?;
-                    Ok(Spanned { token: num_tok, span })
+                    Ok(Spanned {
+                        token: num_tok,
+                        span,
+                    })
                 } else {
-                    Ok(Spanned { token: Token::Minus, span })
+                    Ok(Spanned {
+                        token: Token::Minus,
+                        span,
+                    })
                 }
             }
             '=' => {
@@ -96,12 +173,21 @@ impl Lexer {
                 self.advance();
                 if !self.at_end() && self.peek() == '=' {
                     self.advance();
-                    Ok(Spanned { token: Token::Eq, span })
+                    Ok(Spanned {
+                        token: Token::Eq,
+                        span,
+                    })
                 } else if !self.at_end() && self.peek() == '>' {
                     self.advance();
-                    Ok(Spanned { token: Token::FatArrow, span })
+                    Ok(Spanned {
+                        token: Token::FatArrow,
+                        span,
+                    })
                 } else {
-                    Ok(Spanned { token: Token::Assign, span })
+                    Ok(Spanned {
+                        token: Token::Assign,
+                        span,
+                    })
                 }
             }
             '!' => {
@@ -109,9 +195,15 @@ impl Lexer {
                 self.advance();
                 if !self.at_end() && self.peek() == '=' {
                     self.advance();
-                    Ok(Spanned { token: Token::NotEq, span })
+                    Ok(Spanned {
+                        token: Token::NotEq,
+                        span,
+                    })
                 } else {
-                    Err(format!("Unexpected '!' at {}:{}, did you mean '!='?", span.line, span.col))
+                    Err(format!(
+                        "Unexpected '!' at {}:{}, did you mean '!='?",
+                        span.line, span.col
+                    ))
                 }
             }
             '<' => {
@@ -119,9 +211,15 @@ impl Lexer {
                 self.advance();
                 if !self.at_end() && self.peek() == '=' {
                     self.advance();
-                    Ok(Spanned { token: Token::LtEq, span })
+                    Ok(Spanned {
+                        token: Token::LtEq,
+                        span,
+                    })
                 } else {
-                    Ok(Spanned { token: Token::Lt, span })
+                    Ok(Spanned {
+                        token: Token::Lt,
+                        span,
+                    })
                 }
             }
             '>' => {
@@ -129,15 +227,28 @@ impl Lexer {
                 self.advance();
                 if !self.at_end() && (self.peek().is_alphanumeric() || self.peek() == '_') {
                     let name = self.read_ident_str();
-                    Ok(Spanned { token: Token::PushTo(name), span })
+                    Ok(Spanned {
+                        token: Token::PushTo(name),
+                        span,
+                    })
                 } else if !self.at_end() && self.peek() == '=' {
                     self.advance();
-                    Ok(Spanned { token: Token::GtEq, span })
+                    Ok(Spanned {
+                        token: Token::GtEq,
+                        span,
+                    })
                 } else {
-                    Ok(Spanned { token: Token::Gt, span })
+                    Ok(Spanned {
+                        token: Token::Gt,
+                        span,
+                    })
                 }
             }
-            '|' => { let sp = self.spanned(Token::Pipe); self.advance(); Ok(sp) }
+            '|' => {
+                let sp = self.spanned(Token::Pipe);
+                self.advance();
+                Ok(sp)
+            }
             c if c.is_ascii_digit() => {
                 let span = self.current_span();
                 let tok = self.read_number(false)?;
@@ -148,7 +259,10 @@ impl Lexer {
                 let ident = self.read_ident_str();
                 if !self.at_end() && self.peek() == '>' {
                     self.advance();
-                    return Ok(Spanned { token: Token::PopFrom(ident), span });
+                    return Ok(Spanned {
+                        token: Token::PopFrom(ident),
+                        span,
+                    });
                 }
                 let tok = match ident.as_str() {
                     "true" => Token::Bool(true),
@@ -162,9 +276,10 @@ impl Lexer {
                 };
                 Ok(Spanned { token: tok, span })
             }
-            c => {
-                Err(format!("Unexpected character '{}' at {}:{}", c, self.line, self.col))
-            }
+            c => Err(format!(
+                "Unexpected character '{}' at {}:{}",
+                c, self.line, self.col
+            )),
         }
     }
 
@@ -177,7 +292,10 @@ impl Lexer {
 
         loop {
             if self.at_end() {
-                return Err(format!("Unterminated string starting at {}:{}", span.line, span.col));
+                return Err(format!(
+                    "Unterminated string starting at {}:{}",
+                    span.line, span.col
+                ));
             }
             let ch = self.peek();
             if ch == '"' {
@@ -228,9 +346,15 @@ impl Lexer {
             if !current_lit.is_empty() {
                 parts.push(StringPart::Lit(current_lit));
             }
-            Ok(Spanned { token: Token::StringInterp(parts), span })
+            Ok(Spanned {
+                token: Token::StringInterp(parts),
+                span,
+            })
         } else {
-            Ok(Spanned { token: Token::Str(current_lit), span })
+            Ok(Spanned {
+                token: Token::Str(current_lit),
+                span,
+            })
         }
     }
 
@@ -251,11 +375,13 @@ impl Lexer {
             self.advance();
         }
         if is_float {
-            num_str.parse::<f64>()
+            num_str
+                .parse::<f64>()
                 .map(Token::Float)
                 .map_err(|e| format!("Invalid float '{}': {}", num_str, e))
         } else {
-            num_str.parse::<i64>()
+            num_str
+                .parse::<i64>()
                 .map(Token::Int)
                 .map_err(|e| format!("Invalid int '{}': {}", num_str, e))
         }
@@ -263,7 +389,9 @@ impl Lexer {
 
     fn read_ident_str(&mut self) -> String {
         let mut s = String::new();
-        while !self.at_end() && (self.peek().is_alphanumeric() || self.peek() == '_' || self.peek() == '.') {
+        while !self.at_end()
+            && (self.peek().is_alphanumeric() || self.peek() == '_' || self.peek() == '.')
+        {
             s.push(self.peek());
             self.advance();
         }
@@ -282,8 +410,10 @@ impl Lexer {
     }
 
     fn skip_comment(&mut self) {
-        if !self.at_end() && self.peek() == '-'
-            && self.pos + 1 < self.input.len() && self.input[self.pos + 1] == '-'
+        if !self.at_end()
+            && self.peek() == '-'
+            && self.pos + 1 < self.input.len()
+            && self.input[self.pos + 1] == '-'
         {
             while !self.at_end() && self.peek() != '\n' {
                 self.advance();
@@ -310,11 +440,17 @@ impl Lexer {
     }
 
     fn current_span(&self) -> Span {
-        Span { line: self.line, col: self.col }
+        Span {
+            line: self.line,
+            col: self.col,
+        }
     }
 
     fn spanned(&self, token: Token) -> Spanned {
-        Spanned { token, span: self.current_span() }
+        Spanned {
+            token,
+            span: self.current_span(),
+        }
     }
 }
 

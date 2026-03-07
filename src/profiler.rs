@@ -18,7 +18,7 @@ pub struct Profiler {
 struct CallEntry {
     name: String,
     start: Instant,
-    child_time: Duration,  // time spent in callees
+    child_time: Duration, // time spent in callees
 }
 
 #[derive(Default, Clone)]
@@ -72,9 +72,7 @@ impl Profiler {
 
     /// Print the profiling report
     pub fn report(&self) {
-        let wall_time = self.start_time
-            .map(|s| s.elapsed())
-            .unwrap_or_default();
+        let wall_time = self.start_time.map(|s| s.elapsed()).unwrap_or_default();
 
         println!();
         println!("=== Profile Report ===");
@@ -162,7 +160,9 @@ fn format_num(n: u64) -> String {
     let s = n.to_string();
     let mut result = String::new();
     for (i, ch) in s.chars().rev().enumerate() {
-        if i > 0 && i % 3 == 0 { result.push(','); }
+        if i > 0 && i % 3 == 0 {
+            result.push(',');
+        }
         result.push(ch);
     }
     result.chars().rev().collect()

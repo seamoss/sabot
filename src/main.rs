@@ -1,23 +1,23 @@
-mod token;
-mod lexer;
 mod ast;
-mod parser;
-mod opcode;
+mod builtins_db;
+mod builtins_http;
+mod builtins_io;
+mod builtins_otel;
+mod builtins_serial;
 mod compiler;
+mod formatter;
+mod lexer;
+mod opcode;
+mod parser;
+mod profiler;
+mod token;
 mod value;
 mod vm;
-mod builtins_io;
-mod builtins_http;
-mod builtins_db;
-mod builtins_serial;
-mod builtins_otel;
-mod formatter;
-mod profiler;
 
-use std::io::{self, Write, BufRead};
+use compiler::Compiler;
 use lexer::Lexer;
 use parser::Parser;
-use compiler::Compiler;
+use std::io::{self, BufRead, Write};
 use vm::VM;
 
 fn run_source(source: &str, vm: &mut VM, compiler: &mut Compiler) -> Result<(), String> {
@@ -35,11 +35,15 @@ fn load_rc(vm: &mut VM, compiler: &mut Compiler) {
     // Try .saborc in current directory, then home directory
     let candidates = vec![
         ".saborc".to_string(),
-        dirs_next().map(|h| format!("{}/.saborc", h)).unwrap_or_default(),
+        dirs_next()
+            .map(|h| format!("{}/.saborc", h))
+            .unwrap_or_default(),
     ];
 
     for path in candidates {
-        if path.is_empty() { continue; }
+        if path.is_empty() {
+            continue;
+        }
         if let Ok(source) = std::fs::read_to_string(&path) {
             match run_source(&source, vm, compiler) {
                 Ok(()) => println!("Loaded {}", path),
@@ -88,8 +92,12 @@ fn repl() {
 
         let trimmed = line.trim();
         if buffer.is_empty() {
-            if trimmed.is_empty() { continue; }
-            if trimmed == "quit" || trimmed == "exit" { break; }
+            if trimmed.is_empty() {
+                continue;
+            }
+            if trimmed == "quit" || trimmed == "exit" {
+                break;
+            }
 
             // REPL dot-commands
             match trimmed {
@@ -147,7 +155,9 @@ fn repl() {
 
         let source = std::mem::take(&mut buffer);
         let source = source.trim();
-        if source.is_empty() { continue; }
+        if source.is_empty() {
+            continue;
+        }
 
         match run_source(source, &mut vm, &mut compiler) {
             Ok(()) => {
@@ -219,7 +229,9 @@ fn run_tests(path: &str) {
             })
             .filter_map(|e| e.ok())
             .map(|e| e.file_name().to_string_lossy().to_string())
-            .filter(|name| name.ends_with(".sabo") && (name.contains("test_") || name.contains("_test")))
+            .filter(|name| {
+                name.ends_with(".sabo") && (name.contains("test_") || name.contains("_test"))
+            })
             .collect();
         entries.sort();
 
@@ -291,7 +303,10 @@ fn format_file(path: &str, write_back: bool) {
 
 fn format_files(args: &[String]) {
     let write_back = args.iter().any(|a| a == "-w" || a == "--write");
-    let files: Vec<&String> = args.iter().filter(|a| *a != "-w" && *a != "--write").collect();
+    let files: Vec<&String> = args
+        .iter()
+        .filter(|a| *a != "-w" && *a != "--write")
+        .collect();
 
     if files.is_empty() {
         eprintln!("Usage: sabo fmt [-w] <file.sabo> [file2.sabo ...]");
@@ -341,7 +356,9 @@ fn main() {
             }
             profile_file(&args[2]);
         }
-        _ if args.len() >= 2 && args[1] != "test" && args[1] != "fmt" && args[1] != "profile" => run_file(&args[1]),
+        _ if args.len() >= 2 && args[1] != "test" && args[1] != "fmt" && args[1] != "profile" => {
+            run_file(&args[1])
+        }
         _ => {
             eprintln!("Usage: sabo [file.sabo] [args...]");
             eprintln!("       sabo test <test_file_or_dir>");

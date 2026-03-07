@@ -1,11 +1,11 @@
+use crate::builtins_otel::OtelState;
+use crate::opcode::Op;
+use crate::profiler::Profiler;
+use crate::value::Value;
 use std::collections::HashMap;
 use std::collections::VecDeque;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
-use crate::opcode::Op;
-use crate::value::Value;
-use crate::profiler::Profiler;
-use crate::builtins_otel::OtelState;
+use std::sync::{Arc, Mutex};
 
 /// A typed channel with close semantics
 struct ChannelInner {
@@ -17,7 +17,7 @@ struct ChannelInner {
 struct TaskInfo {
     result: Option<Result<Value, String>>,
     cancel_token: Arc<AtomicBool>,
-    children: Vec<u64>,  // child task IDs (for group cancellation)
+    children: Vec<u64>, // child task IDs (for group cancellation)
 }
 
 /// Registry of typed channels (by integer ID)
@@ -39,11 +39,11 @@ fn find_label(code: &[Op], label: usize) -> Result<usize, String> {
 
 struct CallFrame {
     code: Vec<Op>,
-    lines: Vec<usize>,  // parallel line-number table (same length as code, or empty)
+    lines: Vec<usize>, // parallel line-number table (same length as code, or empty)
     ip: usize,
     locals: Vec<Value>,
     match_stack: Vec<Value>,
-    word_name: Option<String>,  // for backtrace
+    word_name: Option<String>, // for backtrace
 }
 
 /// Shared channel store for cross-thread communication
@@ -91,8 +91,8 @@ pub struct VM {
     db: Option<Arc<Mutex<rusqlite::Connection>>>,
 
     // Memoization
-    memoized: HashMap<String, usize>,  // word name -> arity
-    memo_cache: HashMap<String, HashMap<String, Value>>,  // word -> (key_str -> result)
+    memoized: HashMap<String, usize>, // word name -> arity
+    memo_cache: HashMap<String, HashMap<String, Value>>, // word -> (key_str -> result)
 
     // Structured error support: throw stashes value here
     thrown_value: Option<Value>,
@@ -101,8 +101,8 @@ pub struct VM {
     typed_channels: ChannelRegistry,
     next_channel_id: u64,
     task_registry: TaskRegistry,
-    cancel_token: Arc<AtomicBool>,  // this VM's own cancellation token
-    task_group_stack: Vec<Vec<u64>>,  // stack of task groups (each is a list of task IDs)
+    cancel_token: Arc<AtomicBool>,   // this VM's own cancellation token
+    task_group_stack: Vec<Vec<u64>>, // stack of task groups (each is a list of task IDs)
 
     // Profiling (None = disabled)
     pub profiler: Option<Profiler>,
@@ -180,10 +180,10 @@ impl VM {
             typed_channels: Arc::clone(&self.typed_channels),
             next_channel_id: 0,
             task_registry: Arc::clone(&self.task_registry),
-            cancel_token: Arc::new(AtomicBool::new(false)),  // child gets its own token
+            cancel_token: Arc::new(AtomicBool::new(false)), // child gets its own token
             task_group_stack: Vec::new(),
-            profiler: None,  // children don't profile
-            otel: OtelState::new(),  // children get their own otel state
+            profiler: None,         // children don't profile
+            otel: OtelState::new(), // children get their own otel state
         }
     }
 
@@ -214,7 +214,9 @@ impl VM {
             let name = vm.pop()?;
             match name {
                 Value::Str(n) => {
-                    let val = vm.cells.get(&n)
+                    let val = vm
+                        .cells
+                        .get(&n)
                         .ok_or_else(|| format!("Cell '{}' not found", n))?
                         .clone();
                     vm.stack.push(val);
@@ -262,7 +264,11 @@ impl VM {
             let condition = vm.pop()?;
             match (condition, action) {
                 (Value::Quotation(cond), Value::Quotation(act)) => {
-                    vm.watchers.push(Watcher { condition: cond, action: act, was_true: false });
+                    vm.watchers.push(Watcher {
+                        condition: cond,
+                        action: act,
+                        was_true: false,
+                    });
                     Ok(())
                 }
                 _ => Err("'when' expects two quotations (condition, action)".to_string()),
@@ -286,8 +292,12 @@ impl VM {
                     results.lock().unwrap().insert(task_id, None);
 
                     std::thread::spawn(move || {
-                        let result = child.run(code)
-                            .and_then(|_| child.stack.pop().ok_or_else(|| "Task produced no result".to_string()));
+                        let result = child.run(code).and_then(|_| {
+                            child
+                                .stack
+                                .pop()
+                                .ok_or_else(|| "Task produced no result".to_string())
+                        });
                         results.lock().unwrap().insert(task_id, Some(result));
                     });
 
@@ -343,20 +353,18 @@ impl VM {
         self.builtins.insert("recv".to_string(), |vm| {
             let chan = vm.pop()?;
             match chan {
-                Value::Str(name) => {
-                    loop {
+                Value::Str(name) => loop {
+                    {
+                        let mut channels = vm.channels.lock().unwrap();
+                        if let Some(queue) = channels.get_mut(&name)
+                            && let Some(val) = queue.pop_front()
                         {
-                            let mut channels = vm.channels.lock().unwrap();
-                            if let Some(queue) = channels.get_mut(&name)
-                                && let Some(val) = queue.pop_front()
-                            {
-                                vm.stack.push(val);
-                                return Ok(());
-                            }
+                            vm.stack.push(val);
+                            return Ok(());
                         }
-                        std::thread::sleep(std::time::Duration::from_millis(1));
                     }
-                }
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                },
                 _ => Err("'recv' expects string channel name".to_string()),
             }
         });
@@ -370,10 +378,8 @@ impl VM {
                     if let Some(queue) = channels.get_mut(&name)
                         && let Some(val) = queue.pop_front()
                     {
-                        vm.stack.push(Value::List(vec![
-                            Value::Symbol("ok".to_string()),
-                            val,
-                        ]));
+                        vm.stack
+                            .push(Value::List(vec![Value::Symbol("ok".to_string()), val]));
                         return Ok(());
                     }
                     vm.stack.push(Value::List(vec![
@@ -390,7 +396,10 @@ impl VM {
 
         // backtrace -> {"word1", "word2", ...} (call stack as list)
         self.builtins.insert("backtrace".to_string(), |vm| {
-            let trace: Vec<Value> = vm.frames.iter().rev()
+            let trace: Vec<Value> = vm
+                .frames
+                .iter()
+                .rev()
                 .filter_map(|f| f.word_name.as_ref())
                 .map(|n| Value::Str(n.clone()))
                 .collect();
@@ -426,9 +435,10 @@ impl VM {
             match path {
                 Value::Str(p) => {
                     // Get initial mtime
-                    let meta = std::fs::metadata(&p)
-                        .map_err(|e| format!("Cannot stat '{}': {}", p, e))?;
-                    let initial_mtime = meta.modified()
+                    let meta =
+                        std::fs::metadata(&p).map_err(|e| format!("Cannot stat '{}': {}", p, e))?;
+                    let initial_mtime = meta
+                        .modified()
                         .map_err(|e| format!("Cannot get mtime: {}", e))?;
 
                     // Load initially
@@ -519,7 +529,10 @@ impl VM {
             if a != b {
                 Ok(())
             } else {
-                Err(format!("Assertion failed: {} == {} (expected different)", a, b))
+                Err(format!(
+                    "Assertion failed: {} == {} (expected different)",
+                    a, b
+                ))
             }
         });
 
@@ -544,9 +557,7 @@ impl VM {
 
         // words -> list of all defined word names
         self.builtins.insert("words".to_string(), |vm| {
-            let mut names: Vec<Value> = vm.words.keys()
-                .map(|k| Value::Str(k.clone()))
-                .collect();
+            let mut names: Vec<Value> = vm.words.keys().map(|k| Value::Str(k.clone())).collect();
             names.sort_by_key(|a| a.to_string());
             vm.stack.push(Value::List(names));
             Ok(())
@@ -554,9 +565,7 @@ impl VM {
 
         // globals -> list of all global variable names
         self.builtins.insert("globals".to_string(), |vm| {
-            let mut names: Vec<Value> = vm.globals.keys()
-                .map(|k| Value::Str(k.clone()))
-                .collect();
+            let mut names: Vec<Value> = vm.globals.keys().map(|k| Value::Str(k.clone())).collect();
             names.sort_by_key(|a| a.to_string());
             vm.stack.push(Value::List(names));
             Ok(())
@@ -581,11 +590,17 @@ impl VM {
 
                     // Compile and run in a temporary child to capture words
                     let mut lexer = crate::lexer::Lexer::new(&source);
-                    let tokens = lexer.tokenize().map_err(|e| format!("Import '{}': {}", path, e))?;
+                    let tokens = lexer
+                        .tokenize()
+                        .map_err(|e| format!("Import '{}': {}", path, e))?;
                     let mut parser = crate::parser::Parser::new(tokens);
-                    let program = parser.parse().map_err(|e| format!("Import '{}': {}", path, e))?;
+                    let program = parser
+                        .parse()
+                        .map_err(|e| format!("Import '{}': {}", path, e))?;
                     let mut compiler = crate::compiler::Compiler::new();
-                    let compiled = compiler.compile(&program).map_err(|e| format!("Import '{}': {}", path, e))?;
+                    let compiled = compiler
+                        .compile(&program)
+                        .map_err(|e| format!("Import '{}': {}", path, e))?;
 
                     // Add words with module prefix
                     for (name, code) in &compiled.words {
@@ -612,9 +627,8 @@ impl VM {
             let s = vm.pop()?;
             match (s, delim) {
                 (Value::Str(s), Value::Str(d)) => {
-                    let parts: Vec<Value> = s.split(&d)
-                        .map(|p| Value::Str(p.to_string()))
-                        .collect();
+                    let parts: Vec<Value> =
+                        s.split(&d).map(|p| Value::Str(p.to_string())).collect();
                     vm.stack.push(Value::List(parts));
                     Ok(())
                 }
@@ -628,7 +642,8 @@ impl VM {
             let list = vm.pop()?;
             match (list, delim) {
                 (Value::List(items), Value::Str(d)) => {
-                    let s: String = items.iter()
+                    let s: String = items
+                        .iter()
                         .map(|v| v.to_string())
                         .collect::<Vec<_>>()
                         .join(&d);
@@ -709,14 +724,25 @@ impl VM {
         self.builtins.insert("to_int".to_string(), |vm| {
             let val = vm.pop()?;
             match val {
-                Value::Int(n) => { vm.stack.push(Value::Int(n)); Ok(()) }
-                Value::Float(f) => { vm.stack.push(Value::Int(f as i64)); Ok(()) }
-                Value::Str(s) => {
-                    let n = s.parse::<i64>().map_err(|_| format!("Cannot convert '{}' to int", s))?;
+                Value::Int(n) => {
                     vm.stack.push(Value::Int(n));
                     Ok(())
                 }
-                Value::Bool(b) => { vm.stack.push(Value::Int(if b { 1 } else { 0 })); Ok(()) }
+                Value::Float(f) => {
+                    vm.stack.push(Value::Int(f as i64));
+                    Ok(())
+                }
+                Value::Str(s) => {
+                    let n = s
+                        .parse::<i64>()
+                        .map_err(|_| format!("Cannot convert '{}' to int", s))?;
+                    vm.stack.push(Value::Int(n));
+                    Ok(())
+                }
+                Value::Bool(b) => {
+                    vm.stack.push(Value::Int(if b { 1 } else { 0 }));
+                    Ok(())
+                }
                 _ => Err(format!("Cannot convert {} to int", val)),
             }
         });
@@ -725,10 +751,18 @@ impl VM {
         self.builtins.insert("to_float".to_string(), |vm| {
             let val = vm.pop()?;
             match val {
-                Value::Float(f) => { vm.stack.push(Value::Float(f)); Ok(()) }
-                Value::Int(n) => { vm.stack.push(Value::Float(n as f64)); Ok(()) }
+                Value::Float(f) => {
+                    vm.stack.push(Value::Float(f));
+                    Ok(())
+                }
+                Value::Int(n) => {
+                    vm.stack.push(Value::Float(n as f64));
+                    Ok(())
+                }
                 Value::Str(s) => {
-                    let f = s.parse::<f64>().map_err(|_| format!("Cannot convert '{}' to float", s))?;
+                    let f = s
+                        .parse::<f64>()
+                        .map_err(|_| format!("Cannot convert '{}' to float", s))?;
                     vm.stack.push(Value::Float(f));
                     Ok(())
                 }
@@ -744,10 +778,16 @@ impl VM {
             match name {
                 Value::Str(n) => {
                     // Determine arity from the word's first MatchBegin op
-                    let arity = vm.words.get(&n)
+                    let arity = vm
+                        .words
+                        .get(&n)
                         .and_then(|block| {
                             block.ops.iter().find_map(|op| {
-                                if let Op::MatchBegin(a) = op { Some(*a) } else { None }
+                                if let Op::MatchBegin(a) = op {
+                                    Some(*a)
+                                } else {
+                                    None
+                                }
                             })
                         })
                         .ok_or_else(|| format!("Cannot memo '{}': word not found", n))?;
@@ -818,7 +858,8 @@ impl VM {
                 (Value::Str(s), Value::Str(p)) => {
                     let re = regex::Regex::new(&p)
                         .map_err(|e| format!("Invalid regex '{}': {}", p, e))?;
-                    let matches: Vec<Value> = re.find_iter(&s)
+                    let matches: Vec<Value> = re
+                        .find_iter(&s)
                         .map(|m| Value::Str(m.as_str().to_string()))
                         .collect();
                     vm.stack.push(Value::List(matches));
@@ -853,7 +894,8 @@ impl VM {
                 (Value::Str(s), Value::Str(p)) => {
                     let re = regex::Regex::new(&p)
                         .map_err(|e| format!("Invalid regex '{}': {}", p, e))?;
-                    let parts: Vec<Value> = re.split(&s)
+                    let parts: Vec<Value> = re
+                        .split(&s)
                         .map(|part| Value::Str(part.to_string()))
                         .collect();
                     vm.stack.push(Value::List(parts));
@@ -873,7 +915,8 @@ impl VM {
                         .map_err(|e| format!("Invalid regex '{}': {}", p, e))?;
                     match re.captures(&s) {
                         Some(caps) => {
-                            let groups: Vec<Value> = caps.iter()
+                            let groups: Vec<Value> = caps
+                                .iter()
                                 .map(|m| match m {
                                     Some(m) => Value::Str(m.as_str().to_string()),
                                     None => Value::Symbol("none".into()),
@@ -918,12 +961,13 @@ impl VM {
             let fs_path = vm.pop()?;
             match (fs_path, url_prefix) {
                 (Value::Str(fs), Value::Str(url)) => {
-                    vm.static_dirs.lock().unwrap().push(
-                        crate::builtins_http::StaticDir {
+                    vm.static_dirs
+                        .lock()
+                        .unwrap()
+                        .push(crate::builtins_http::StaticDir {
                             url_prefix: url,
                             fs_path: fs,
-                        }
-                    );
+                        });
                     Ok(())
                 }
                 _ => Err("'static_dir' expects two strings (fs_path, url_prefix)".into()),
@@ -966,7 +1010,10 @@ impl VM {
                                 let template = vm_template.spawn_child();
                                 std::thread::spawn(move || {
                                     crate::builtins_http::handle_connection(
-                                        stream, &routes, &static_dirs, &template,
+                                        stream,
+                                        &routes,
+                                        &static_dirs,
+                                        &template,
                                     );
                                 });
                             }
@@ -1011,7 +1058,9 @@ impl VM {
             let sql = vm.pop()?;
             match sql {
                 Value::Str(s) => {
-                    let db = vm.db.as_ref()
+                    let db = vm
+                        .db
+                        .as_ref()
                         .ok_or("No database open (use db_open first)")?;
                     let conn = db.lock().unwrap();
                     let count = crate::builtins_db::exec(&conn, &s, &[])?;
@@ -1028,7 +1077,9 @@ impl VM {
             let sql = vm.pop()?;
             match (sql, params) {
                 (Value::Str(s), Value::List(p)) => {
-                    let db = vm.db.as_ref()
+                    let db = vm
+                        .db
+                        .as_ref()
                         .ok_or("No database open (use db_open first)")?;
                     let conn = db.lock().unwrap();
                     let count = crate::builtins_db::exec(&conn, &s, &p)?;
@@ -1044,7 +1095,9 @@ impl VM {
             let sql = vm.pop()?;
             match sql {
                 Value::Str(s) => {
-                    let db = vm.db.as_ref()
+                    let db = vm
+                        .db
+                        .as_ref()
                         .ok_or("No database open (use db_open first)")?;
                     let conn = db.lock().unwrap();
                     let result = crate::builtins_db::query(&conn, &s, &[])?;
@@ -1061,7 +1114,9 @@ impl VM {
             let sql = vm.pop()?;
             match (sql, params) {
                 (Value::Str(s), Value::List(p)) => {
-                    let db = vm.db.as_ref()
+                    let db = vm
+                        .db
+                        .as_ref()
                         .ok_or("No database open (use db_open first)")?;
                     let conn = db.lock().unwrap();
                     let result = crate::builtins_db::query(&conn, &s, &p)?;
@@ -1096,7 +1151,8 @@ impl VM {
             match ch_id {
                 Value::Int(id) => {
                     let registry = vm.typed_channels.lock().unwrap();
-                    let ch = registry.get(&(id as u64))
+                    let ch = registry
+                        .get(&(id as u64))
                         .ok_or_else(|| format!("Channel {} does not exist", id))?
                         .clone();
                     drop(registry);
@@ -1118,7 +1174,8 @@ impl VM {
                 Value::Int(id) => {
                     let ch = {
                         let registry = vm.typed_channels.lock().unwrap();
-                        registry.get(&(id as u64))
+                        registry
+                            .get(&(id as u64))
                             .ok_or_else(|| format!("Channel {} does not exist", id))?
                             .clone()
                     };
@@ -1151,16 +1208,15 @@ impl VM {
             match ch_id {
                 Value::Int(id) => {
                     let registry = vm.typed_channels.lock().unwrap();
-                    let ch = registry.get(&(id as u64))
+                    let ch = registry
+                        .get(&(id as u64))
                         .ok_or_else(|| format!("Channel {} does not exist", id))?
                         .clone();
                     drop(registry);
                     let mut inner = ch.lock().unwrap();
                     if let Some(val) = inner.queue.pop_front() {
-                        vm.stack.push(Value::List(vec![
-                            Value::Symbol("ok".into()),
-                            val,
-                        ]));
+                        vm.stack
+                            .push(Value::List(vec![Value::Symbol("ok".into()), val]));
                     } else if inner.closed {
                         vm.stack.push(Value::Symbol("closed".into()));
                     } else {
@@ -1178,7 +1234,8 @@ impl VM {
             match ch_id {
                 Value::Int(id) => {
                     let registry = vm.typed_channels.lock().unwrap();
-                    let ch = registry.get(&(id as u64))
+                    let ch = registry
+                        .get(&(id as u64))
                         .ok_or_else(|| format!("Channel {} does not exist", id))?
                         .clone();
                     drop(registry);
@@ -1237,11 +1294,14 @@ impl VM {
                     let results = Arc::clone(&vm.task_results);
 
                     // Register task info
-                    registry.lock().unwrap().insert(task_id, TaskInfo {
-                        result: None,
-                        cancel_token: Arc::clone(&cancel_token),
-                        children: Vec::new(),
-                    });
+                    registry.lock().unwrap().insert(
+                        task_id,
+                        TaskInfo {
+                            result: None,
+                            cancel_token: Arc::clone(&cancel_token),
+                            children: Vec::new(),
+                        },
+                    );
                     results.lock().unwrap().insert(task_id, None);
 
                     // Track in current task group (if any)
@@ -1250,9 +1310,16 @@ impl VM {
                     }
 
                     std::thread::spawn(move || {
-                        let result = child.run(code)
-                            .and_then(|_| child.stack.pop().ok_or_else(|| "Task produced no result".to_string()));
-                        results.lock().unwrap().insert(task_id, Some(result.clone()));
+                        let result = child.run(code).and_then(|_| {
+                            child
+                                .stack
+                                .pop()
+                                .ok_or_else(|| "Task produced no result".to_string())
+                        });
+                        results
+                            .lock()
+                            .unwrap()
+                            .insert(task_id, Some(result.clone()));
                         registry.lock().unwrap().entry(task_id).and_modify(|info| {
                             info.result = Some(result);
                         });
@@ -1319,10 +1386,13 @@ impl VM {
             let ids = vm.pop()?;
             match ids {
                 Value::List(id_list) => {
-                    let task_ids: Vec<u64> = id_list.iter().map(|v| match v {
-                        Value::Int(id) => Ok(*id as u64),
-                        _ => Err("'await_any' expects list of int task ids".to_string()),
-                    }).collect::<Result<_, _>>()?;
+                    let task_ids: Vec<u64> = id_list
+                        .iter()
+                        .map(|v| match v {
+                            Value::Int(id) => Ok(*id as u64),
+                            _ => Err("'await_any' expects list of int task ids".to_string()),
+                        })
+                        .collect::<Result<_, _>>()?;
 
                     // Poll until any task completes
                     loop {
@@ -1345,12 +1415,13 @@ impl VM {
 
                                 let result_val = match result {
                                     Ok(val) => Value::List(vec![Value::Symbol("ok".into()), val]),
-                                    Err(e) => Value::List(vec![Value::Symbol("error".into()), Value::Str(e)]),
+                                    Err(e) => Value::List(vec![
+                                        Value::Symbol("error".into()),
+                                        Value::Str(e),
+                                    ]),
                                 };
-                                vm.stack.push(Value::List(vec![
-                                    Value::Int(tid as i64),
-                                    result_val,
-                                ]));
+                                vm.stack
+                                    .push(Value::List(vec![Value::Int(tid as i64), result_val]));
                                 return Ok(());
                             }
                         }
@@ -1376,24 +1447,25 @@ impl VM {
                     let mut child = vm.spawn_child();
                     child.cancel_token = Arc::clone(&cancel_token);
 
-                    let results: Arc<Mutex<Option<Result<Value, String>>>> = Arc::new(Mutex::new(None));
+                    let results: Arc<Mutex<Option<Result<Value, String>>>> =
+                        Arc::new(Mutex::new(None));
                     let results_clone = Arc::clone(&results);
 
                     std::thread::spawn(move || {
-                        let result = child.run(code)
+                        let result = child
+                            .run(code)
                             .and_then(|_| child.stack.pop().ok_or_else(|| "No result".into()));
                         *results_clone.lock().unwrap() = Some(result);
                     });
 
-                    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(timeout_ms as u64);
+                    let deadline = std::time::Instant::now()
+                        + std::time::Duration::from_millis(timeout_ms as u64);
                     loop {
                         if let Some(result) = results.lock().unwrap().take() {
                             match result {
                                 Ok(val) => {
-                                    vm.stack.push(Value::List(vec![
-                                        Value::Symbol("ok".into()),
-                                        val,
-                                    ]));
+                                    vm.stack
+                                        .push(Value::List(vec![Value::Symbol("ok".into()), val]));
                                     return Ok(());
                                 }
                                 Err(e) => {
@@ -1425,30 +1497,35 @@ impl VM {
             let ids = vm.pop()?;
             match ids {
                 Value::List(id_list) => {
-                    let ch_ids: Vec<u64> = id_list.iter().map(|v| match v {
-                        Value::Int(id) => Ok(*id as u64),
-                        _ => Err("'select' expects list of int channel ids".to_string()),
-                    }).collect::<Result<_, _>>()?;
+                    let ch_ids: Vec<u64> = id_list
+                        .iter()
+                        .map(|v| match v {
+                            Value::Int(id) => Ok(*id as u64),
+                            _ => Err("'select' expects list of int channel ids".to_string()),
+                        })
+                        .collect::<Result<_, _>>()?;
 
                     // Gather Arc handles once
                     let channels: Vec<(u64, Arc<Mutex<ChannelInner>>)> = {
                         let registry = vm.typed_channels.lock().unwrap();
-                        ch_ids.iter().map(|&id| {
-                            let ch = registry.get(&id)
-                                .ok_or_else(|| format!("Channel {} does not exist", id))?
-                                .clone();
-                            Ok((id, ch))
-                        }).collect::<Result<_, String>>()?
+                        ch_ids
+                            .iter()
+                            .map(|&id| {
+                                let ch = registry
+                                    .get(&id)
+                                    .ok_or_else(|| format!("Channel {} does not exist", id))?
+                                    .clone();
+                                Ok((id, ch))
+                            })
+                            .collect::<Result<_, String>>()?
                     };
 
                     loop {
                         for (id, ch) in &channels {
                             let mut inner = ch.lock().unwrap();
                             if let Some(val) = inner.queue.pop_front() {
-                                vm.stack.push(Value::List(vec![
-                                    Value::Int(*id as i64),
-                                    val,
-                                ]));
+                                vm.stack
+                                    .push(Value::List(vec![Value::Int(*id as i64), val]));
                                 return Ok(());
                             }
                             if inner.closed {
@@ -1520,7 +1597,12 @@ impl VM {
                 Value::List(l) => vm.stack.push(Value::Int(l.len() as i64)),
                 Value::Str(s) => vm.stack.push(Value::Int(s.len() as i64)),
                 Value::Map(m) => vm.stack.push(Value::Int(m.len() as i64)),
-                _ => return Err(format!("'len' expects list, string, or map, got {}", val.type_name())),
+                _ => {
+                    return Err(format!(
+                        "'len' expects list, string, or map, got {}",
+                        val.type_name()
+                    ));
+                }
             }
             Ok(())
         });
@@ -1528,7 +1610,9 @@ impl VM {
             let val = vm.pop()?;
             match val {
                 Value::List(l) => {
-                    if l.is_empty() { return Err("'head' on empty list".to_string()); }
+                    if l.is_empty() {
+                        return Err("'head' on empty list".to_string());
+                    }
                     vm.stack.push(l[0].clone());
                 }
                 _ => return Err(format!("'head' expects list, got {}", val.type_name())),
@@ -1539,7 +1623,9 @@ impl VM {
             let val = vm.pop()?;
             match val {
                 Value::List(l) => {
-                    if l.is_empty() { return Err("'tail' on empty list".to_string()); }
+                    if l.is_empty() {
+                        return Err("'tail' on empty list".to_string());
+                    }
                     vm.stack.push(Value::List(l[1..].to_vec()));
                 }
                 _ => return Err(format!("'tail' expects list, got {}", val.type_name())),
@@ -1564,7 +1650,12 @@ impl VM {
                 Value::List(l) => vm.stack.push(Value::Bool(l.is_empty())),
                 Value::Str(s) => vm.stack.push(Value::Bool(s.is_empty())),
                 Value::Map(m) => vm.stack.push(Value::Bool(m.is_empty())),
-                _ => return Err(format!("'empty' expects list, string, or map, got {}", val.type_name())),
+                _ => {
+                    return Err(format!(
+                        "'empty' expects list, string, or map, got {}",
+                        val.type_name()
+                    ));
+                }
             }
             Ok(())
         });
@@ -1576,7 +1667,9 @@ impl VM {
         self.builtins.insert("stack".to_string(), |vm| {
             print!("<");
             for (i, v) in vm.stack.iter().enumerate() {
-                if i > 0 { print!(" "); }
+                if i > 0 {
+                    print!(" ");
+                }
                 print!("{}", v);
             }
             println!(">");
@@ -1595,12 +1688,13 @@ impl VM {
             let key = vm.pop()?;
             let map = vm.pop()?;
             match map {
-                Value::Map(map) => {
-                    match map.get(&key) {
-                        Some(v) => { vm.stack.push(v.clone()); Ok(()) }
-                        None => Err(format!("Key {} not found in map", key)),
+                Value::Map(map) => match map.get(&key) {
+                    Some(v) => {
+                        vm.stack.push(v.clone());
+                        Ok(())
                     }
-                }
+                    None => Err(format!("Key {} not found in map", key)),
+                },
                 _ => Err(format!("'get' expects map, got {}", map.type_name())),
             }
         });
@@ -1683,7 +1777,11 @@ impl VM {
             let else_branch = vm.pop()?;
             let then_branch = vm.pop()?;
             let cond = vm.pop()?;
-            let branch = if cond.is_truthy() { then_branch } else { else_branch };
+            let branch = if cond.is_truthy() {
+                then_branch
+            } else {
+                else_branch
+            };
             match branch {
                 Value::Quotation(code) => {
                     vm.run_quotation_internal(&code)?;
@@ -1762,10 +1860,8 @@ impl VM {
 
                     // Success: wrap top of stack in {:ok, result}
                     let result = vm.stack.pop().unwrap_or(Value::Bool(false));
-                    vm.stack.push(Value::List(vec![
-                        Value::Symbol("ok".to_string()),
-                        result,
-                    ]));
+                    vm.stack
+                        .push(Value::List(vec![Value::Symbol("ok".to_string()), result]));
                     Ok(())
                 }
                 _ => Err(format!("'try' expects quotation, got {}", val.type_name())),
@@ -1818,7 +1914,9 @@ impl VM {
                                 break;
                             }
                             let done = vm.step_inner()?;
-                            if done { break; }
+                            if done {
+                                break;
+                            }
                         }
                     }
                     Ok(())
@@ -1850,7 +1948,9 @@ impl VM {
                                 break;
                             }
                             let done = vm.step_inner()?;
-                            if done { break; }
+                            if done {
+                                break;
+                            }
                         }
                         results.push(vm.pop()?);
                     }
@@ -1862,7 +1962,8 @@ impl VM {
         });
 
         // map: alias for map_list
-        self.builtins.insert("map".to_string(), self.builtins["map_list"]);
+        self.builtins
+            .insert("map".to_string(), self.builtins["map_list"]);
 
         // filter: {list} [pred] filter -> {filtered}
         self.builtins.insert("filter".to_string(), |vm| {
@@ -1883,9 +1984,13 @@ impl VM {
                         });
                         let target_depth = vm.frames.len() - 1;
                         loop {
-                            if vm.frames.len() <= target_depth { break; }
+                            if vm.frames.len() <= target_depth {
+                                break;
+                            }
                             let done = vm.step_inner()?;
-                            if done { break; }
+                            if done {
+                                break;
+                            }
                         }
                         let pred = vm.pop()?;
                         if pred.is_truthy() {
@@ -1920,9 +2025,13 @@ impl VM {
                         });
                         let target_depth = vm.frames.len() - 1;
                         loop {
-                            if vm.frames.len() <= target_depth { break; }
+                            if vm.frames.len() <= target_depth {
+                                break;
+                            }
                             let done = vm.step_inner()?;
-                            if done { break; }
+                            if done {
+                                break;
+                            }
                         }
                     }
                     Ok(())
@@ -1951,7 +2060,8 @@ impl VM {
             let s = vm.pop()?;
             match (s, delim) {
                 (Value::Str(s), Value::Str(d)) => {
-                    let parts: Vec<Value> = s.split(&d).map(|p| Value::Str(p.to_string())).collect();
+                    let parts: Vec<Value> =
+                        s.split(&d).map(|p| Value::Str(p.to_string())).collect();
                     vm.stack.push(Value::List(parts));
                     Ok(())
                 }
@@ -1979,12 +2089,10 @@ impl VM {
             match val {
                 Value::Int(_) => vm.stack.push(val),
                 Value::Float(f) => vm.stack.push(Value::Int(f as i64)),
-                Value::Str(s) => {
-                    match s.parse::<i64>() {
-                        Ok(n) => vm.stack.push(Value::Int(n)),
-                        Err(_) => return Err(format!("Cannot convert '{}' to int", s)),
-                    }
-                }
+                Value::Str(s) => match s.parse::<i64>() {
+                    Ok(n) => vm.stack.push(Value::Int(n)),
+                    Err(_) => return Err(format!("Cannot convert '{}' to int", s)),
+                },
                 Value::Bool(b) => vm.stack.push(Value::Int(if b { 1 } else { 0 })),
                 _ => return Err(format!("Cannot convert {} to int", val.type_name())),
             }
@@ -1997,12 +2105,10 @@ impl VM {
             match val {
                 Value::Float(_) => vm.stack.push(val),
                 Value::Int(n) => vm.stack.push(Value::Float(n as f64)),
-                Value::Str(s) => {
-                    match s.parse::<f64>() {
-                        Ok(f) => vm.stack.push(Value::Float(f)),
-                        Err(_) => return Err(format!("Cannot convert '{}' to float", s)),
-                    }
-                }
+                Value::Str(s) => match s.parse::<f64>() {
+                    Ok(f) => vm.stack.push(Value::Float(f)),
+                    Err(_) => return Err(format!("Cannot convert '{}' to float", s)),
+                },
                 _ => return Err(format!("Cannot convert {} to float", val.type_name())),
             }
             Ok(())
@@ -2035,7 +2141,10 @@ impl VM {
                     vm.stack.push(Value::Str(s.chars().rev().collect()));
                     Ok(())
                 }
-                _ => Err(format!("'reverse' expects list or string, got {}", val.type_name())),
+                _ => Err(format!(
+                    "'reverse' expects list or string, got {}",
+                    val.type_name()
+                )),
             }
         });
 
@@ -2088,9 +2197,7 @@ impl VM {
             let s = vm.pop()?;
             match s {
                 Value::Str(s) => {
-                    let chars: Vec<Value> = s.chars()
-                        .map(|c| Value::Str(c.to_string()))
-                        .collect();
+                    let chars: Vec<Value> = s.chars().map(|c| Value::Str(c.to_string())).collect();
                     vm.stack.push(Value::List(chars));
                     Ok(())
                 }
@@ -2114,7 +2221,10 @@ impl VM {
                     }
                     Ok(())
                 }
-                _ => Err(format!("'contains' expects list or string, got {}", haystack.type_name())),
+                _ => Err(format!(
+                    "'contains' expects list or string, got {}",
+                    haystack.type_name()
+                )),
             }
         });
     }
@@ -2139,7 +2249,9 @@ impl VM {
     /// Run a quotation within the current VM (for reactive cells / internal use)
     fn run_quotation_internal(&mut self, code: &[Op]) -> Result<(), String> {
         // Inherit parent frame's locals so quotations can access enclosing bindings
-        let parent_locals = self.frames.last()
+        let parent_locals = self
+            .frames
+            .last()
             .map(|f| f.locals.clone())
             .unwrap_or_default();
         self.frames.push(CallFrame {
@@ -2156,7 +2268,9 @@ impl VM {
                 break;
             }
             let done = self.step_inner().map_err(|e| self.format_error(e))?;
-            if done { break; }
+            if done {
+                break;
+            }
         }
         Ok(())
     }
@@ -2259,7 +2373,9 @@ impl VM {
     }
 
     fn step_inner(&mut self) -> Result<bool, String> {
-        if let Some(ref mut p) = self.profiler { p.tick(); }
+        if let Some(ref mut p) = self.profiler {
+            p.tick();
+        }
 
         let frame = self.frames.last_mut().unwrap();
         if frame.ip >= frame.code.len() {
@@ -2312,19 +2428,59 @@ impl VM {
             Op::Div => self.binary_op("/")?,
             Op::Mod => self.binary_op("%")?,
 
-            Op::Eq => { let b = self.pop()?; let a = self.pop()?; self.stack.push(Value::Bool(a == b)); }
-            Op::NotEq => { let b = self.pop()?; let a = self.pop()?; self.stack.push(Value::Bool(a != b)); }
-            Op::Lt => { let b = self.pop()?; let a = self.pop()?; self.stack.push(Value::Bool(a < b)); }
-            Op::Gt => { let b = self.pop()?; let a = self.pop()?; self.stack.push(Value::Bool(a > b)); }
-            Op::LtEq => { let b = self.pop()?; let a = self.pop()?; self.stack.push(Value::Bool(a <= b)); }
-            Op::GtEq => { let b = self.pop()?; let a = self.pop()?; self.stack.push(Value::Bool(a >= b)); }
+            Op::Eq => {
+                let b = self.pop()?;
+                let a = self.pop()?;
+                self.stack.push(Value::Bool(a == b));
+            }
+            Op::NotEq => {
+                let b = self.pop()?;
+                let a = self.pop()?;
+                self.stack.push(Value::Bool(a != b));
+            }
+            Op::Lt => {
+                let b = self.pop()?;
+                let a = self.pop()?;
+                self.stack.push(Value::Bool(a < b));
+            }
+            Op::Gt => {
+                let b = self.pop()?;
+                let a = self.pop()?;
+                self.stack.push(Value::Bool(a > b));
+            }
+            Op::LtEq => {
+                let b = self.pop()?;
+                let a = self.pop()?;
+                self.stack.push(Value::Bool(a <= b));
+            }
+            Op::GtEq => {
+                let b = self.pop()?;
+                let a = self.pop()?;
+                self.stack.push(Value::Bool(a >= b));
+            }
 
-            Op::And => { let b = self.pop()?; let a = self.pop()?; self.stack.push(Value::Bool(a.is_truthy() && b.is_truthy())); }
-            Op::Or => { let b = self.pop()?; let a = self.pop()?; self.stack.push(Value::Bool(a.is_truthy() || b.is_truthy())); }
-            Op::Not => { let a = self.pop()?; self.stack.push(Value::Bool(!a.is_truthy())); }
+            Op::And => {
+                let b = self.pop()?;
+                let a = self.pop()?;
+                self.stack.push(Value::Bool(a.is_truthy() && b.is_truthy()));
+            }
+            Op::Or => {
+                let b = self.pop()?;
+                let a = self.pop()?;
+                self.stack.push(Value::Bool(a.is_truthy() || b.is_truthy()));
+            }
+            Op::Not => {
+                let a = self.pop()?;
+                self.stack.push(Value::Bool(!a.is_truthy()));
+            }
 
-            Op::Dup => { let v = self.peek()?.clone(); self.stack.push(v); }
-            Op::Drop => { self.pop()?; }
+            Op::Dup => {
+                let v = self.peek()?.clone();
+                self.stack.push(v);
+            }
+            Op::Drop => {
+                self.pop()?;
+            }
             Op::Swap => {
                 let a = self.pop()?;
                 let b = self.pop()?;
@@ -2332,12 +2488,16 @@ impl VM {
                 self.stack.push(b);
             }
             Op::Over => {
-                if self.stack.len() < 2 { return Err("Stack underflow".to_string()); }
+                if self.stack.len() < 2 {
+                    return Err("Stack underflow".to_string());
+                }
                 let v = self.stack[self.stack.len() - 2].clone();
                 self.stack.push(v);
             }
             Op::Rot => {
-                if self.stack.len() < 3 { return Err("Stack underflow".to_string()); }
+                if self.stack.len() < 3 {
+                    return Err("Stack underflow".to_string());
+                }
                 let len = self.stack.len();
                 let v = self.stack.remove(len - 3);
                 self.stack.push(v);
@@ -2348,7 +2508,9 @@ impl VM {
                 self.named_stacks.entry(name).or_default().push(val);
             }
             Op::PopFrom(name) => {
-                let val = self.named_stacks.get_mut(&name)
+                let val = self
+                    .named_stacks
+                    .get_mut(&name)
                     .and_then(|s| s.pop())
                     .ok_or_else(|| format!("Named stack '{}' is empty", name))?;
                 self.stack.push(val);
@@ -2359,7 +2521,9 @@ impl VM {
                 self.globals.insert(name, val);
             }
             Op::LoadGlobal(name) => {
-                let val = self.globals.get(&name)
+                let val = self
+                    .globals
+                    .get(&name)
                     .ok_or_else(|| format!("Undefined variable '{}'", name))?
                     .clone();
                 self.stack.push(val);
@@ -2367,7 +2531,11 @@ impl VM {
 
             Op::MatchBegin(n) => {
                 if self.stack.len() < n {
-                    return Err(format!("Stack underflow: need {} items for pattern match, have {}", n, self.stack.len()));
+                    return Err(format!(
+                        "Stack underflow: need {} items for pattern match, have {}",
+                        n,
+                        self.stack.len()
+                    ));
                 }
                 let start = self.stack.len() - n;
                 let match_items: Vec<Value> = self.stack[start..].to_vec();
@@ -2378,7 +2546,8 @@ impl VM {
 
             Op::MatchLitInt(expected, fail) => {
                 let frame = self.frames.last_mut().unwrap();
-                let matched = matches!(frame.match_stack.first(), Some(Value::Int(n)) if *n == expected);
+                let matched =
+                    matches!(frame.match_stack.first(), Some(Value::Int(n)) if *n == expected);
                 if matched {
                     frame.match_stack.remove(0);
                 } else {
@@ -2399,7 +2568,8 @@ impl VM {
             Op::MatchLitStr(ref expected, fail) => {
                 let expected = expected.clone();
                 let frame = self.frames.last_mut().unwrap();
-                let matched = matches!(frame.match_stack.first(), Some(Value::Str(s)) if *s == expected);
+                let matched =
+                    matches!(frame.match_stack.first(), Some(Value::Str(s)) if *s == expected);
                 if matched {
                     frame.match_stack.remove(0);
                 } else {
@@ -2410,7 +2580,8 @@ impl VM {
             Op::MatchLitSymbol(ref expected, fail) => {
                 let expected = expected.clone();
                 let frame = self.frames.last_mut().unwrap();
-                let matched = matches!(frame.match_stack.first(), Some(Value::Symbol(s)) if *s == expected);
+                let matched =
+                    matches!(frame.match_stack.first(), Some(Value::Symbol(s)) if *s == expected);
                 if matched {
                     frame.match_stack.remove(0);
                 } else {
@@ -2420,7 +2591,8 @@ impl VM {
 
             Op::MatchLitBool(expected, fail) => {
                 let frame = self.frames.last_mut().unwrap();
-                let matched = matches!(frame.match_stack.first(), Some(Value::Bool(b)) if *b == expected);
+                let matched =
+                    matches!(frame.match_stack.first(), Some(Value::Bool(b)) if *b == expected);
                 if matched {
                     frame.match_stack.remove(0);
                 } else {
@@ -2449,7 +2621,8 @@ impl VM {
 
             Op::MatchListEmpty(fail) => {
                 let frame = self.frames.last_mut().unwrap();
-                let matched = matches!(frame.match_stack.first(), Some(Value::List(l)) if l.is_empty());
+                let matched =
+                    matches!(frame.match_stack.first(), Some(Value::List(l)) if l.is_empty());
                 if matched {
                     frame.match_stack.remove(0);
                 } else {
@@ -2501,7 +2674,9 @@ impl VM {
                         "Local variable slot {} out of range (word '{}' has {} locals). \
                          This usually means a closure is referencing a variable from an outer scope \
                          that wasn't captured correctly.",
-                        slot, word, frame.locals.len()
+                        slot,
+                        word,
+                        frame.locals.len()
                     ));
                 }
                 let val = frame.locals[slot].clone();
@@ -2511,9 +2686,13 @@ impl VM {
             Op::Call(name) => {
                 // Check builtins first, then words, then globals
                 if let Some(builtin) = self.builtins.get(&name).cloned() {
-                    if let Some(ref mut p) = self.profiler { p.enter_word(&name); }
+                    if let Some(ref mut p) = self.profiler {
+                        p.enter_word(&name);
+                    }
                     builtin(self)?;
-                    if let Some(ref mut p) = self.profiler { p.exit_word(); }
+                    if let Some(ref mut p) = self.profiler {
+                        p.exit_word();
+                    }
                 } else if let Some(block) = self.words.get(&name).cloned() {
                     // Check memoization
                     if let Some(&arity) = self.memoized.get(&name) {
@@ -2525,18 +2704,23 @@ impl VM {
                                 .collect::<Vec<_>>()
                                 .join(",");
 
-                            if let Some(cached) = self.memo_cache
+                            if let Some(cached) = self
+                                .memo_cache
                                 .get(&name)
                                 .and_then(|m| m.get(&cache_key))
                                 .cloned()
                             {
                                 // Cache hit: pop args, push result
-                                for _ in 0..arity { self.stack.pop(); }
+                                for _ in 0..arity {
+                                    self.stack.pop();
+                                }
                                 self.stack.push(cached);
                             } else {
                                 // Cache miss: run word to completion, cache result
                                 let _stack_len_before = self.stack.len() - arity;
-                                if let Some(ref mut p) = self.profiler { p.enter_word(&name); }
+                                if let Some(ref mut p) = self.profiler {
+                                    p.enter_word(&name);
+                                }
                                 self.frames.push(CallFrame {
                                     code: block.ops.clone(),
                                     lines: block.lines.clone(),
@@ -2547,9 +2731,13 @@ impl VM {
                                 });
                                 let target_depth = self.frames.len() - 1;
                                 loop {
-                                    if self.frames.len() <= target_depth { break; }
+                                    if self.frames.len() <= target_depth {
+                                        break;
+                                    }
                                     let done = self.step_inner()?;
-                                    if done { break; }
+                                    if done {
+                                        break;
+                                    }
                                 }
                                 // Cache the result (top of stack after execution)
                                 if let Some(result) = self.stack.last().cloned() {
@@ -2561,7 +2749,9 @@ impl VM {
                             }
                         } else {
                             // Not enough args, just run normally
-                            if let Some(ref mut p) = self.profiler { p.enter_word(&name); }
+                            if let Some(ref mut p) = self.profiler {
+                                p.enter_word(&name);
+                            }
                             self.frames.push(CallFrame {
                                 code: block.ops,
                                 lines: block.lines,
@@ -2572,7 +2762,9 @@ impl VM {
                             });
                         }
                     } else {
-                        if let Some(ref mut p) = self.profiler { p.enter_word(&name); }
+                        if let Some(ref mut p) = self.profiler {
+                            p.enter_word(&name);
+                        }
                         self.frames.push(CallFrame {
                             code: block.ops,
                             lines: block.lines,
@@ -2662,7 +2854,12 @@ impl VM {
                             word_name: Some("<apply>".to_string()),
                         });
                     }
-                    _ => return Err(format!("'apply' expects quotation, got {}", val.type_name())),
+                    _ => {
+                        return Err(format!(
+                            "'apply' expects quotation, got {}",
+                            val.type_name()
+                        ));
+                    }
                 }
             }
 
@@ -2712,7 +2909,9 @@ impl VM {
 
     fn pop(&mut self) -> Result<Value, String> {
         self.stack.pop().ok_or_else(|| {
-            let context = self.frames.last()
+            let context = self
+                .frames
+                .last()
                 .and_then(|f| f.word_name.as_ref())
                 .map(|w| format!(" in '{}'", w))
                 .unwrap_or_default();
@@ -2721,7 +2920,9 @@ impl VM {
     }
 
     fn peek(&self) -> Result<&Value, String> {
-        self.stack.last().ok_or_else(|| "Stack underflow".to_string())
+        self.stack
+            .last()
+            .ok_or_else(|| "Stack underflow".to_string())
     }
 
     fn binary_op(&mut self, op: &str) -> Result<(), String> {
@@ -2732,11 +2933,15 @@ impl VM {
             (Value::Int(a), Value::Int(b), "-") => Value::Int(a - b),
             (Value::Int(a), Value::Int(b), "*") => Value::Int(a * b),
             (Value::Int(a), Value::Int(b), "/") => {
-                if *b == 0 { return Err("Division by zero".to_string()); }
+                if *b == 0 {
+                    return Err("Division by zero".to_string());
+                }
                 Value::Int(a / b)
             }
             (Value::Int(a), Value::Int(b), "%") => {
-                if *b == 0 { return Err("Modulo by zero".to_string()); }
+                if *b == 0 {
+                    return Err("Modulo by zero".to_string());
+                }
                 Value::Int(a % b)
             }
             (Value::Float(a), Value::Float(b), "+") => Value::Float(a + b),
@@ -2767,7 +2972,14 @@ impl VM {
                 }
             }
             (Value::Str(a), Value::Str(b), "+") => Value::Str(format!("{}{}", a, b)),
-            (a, b, op) => return Err(format!("Cannot apply '{}' to {} and {}", op, a.type_name(), b.type_name())),
+            (a, b, op) => {
+                return Err(format!(
+                    "Cannot apply '{}' to {} and {}",
+                    op,
+                    a.type_name(),
+                    b.type_name()
+                ));
+            }
         };
         self.stack.push(result);
         Ok(())
@@ -2800,7 +3012,9 @@ impl VM {
         }
         let mut s = String::from("<");
         for (i, v) in self.stack.iter().enumerate() {
-            if i > 0 { s.push(' '); }
+            if i > 0 {
+                s.push(' ');
+            }
             s.push_str(&format!("{}", v));
         }
         s.push('>');
@@ -2813,14 +3027,20 @@ impl VM {
         }
         let mut names: Vec<&String> = self.words.keys().collect();
         names.sort();
-        names.iter().map(|n| n.as_str()).collect::<Vec<_>>().join(", ")
+        names
+            .iter()
+            .map(|n| n.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
     }
 
     pub fn globals_display(&self) -> String {
         if self.globals.is_empty() {
             return "no globals".to_string();
         }
-        let mut pairs: Vec<String> = self.globals.iter()
+        let mut pairs: Vec<String> = self
+            .globals
+            .iter()
             .map(|(k, v)| format!("{} = {}", k, v))
             .collect();
         pairs.sort();
@@ -2831,7 +3051,9 @@ impl VM {
         if self.cells.is_empty() {
             return "no cells".to_string();
         }
-        let mut pairs: Vec<String> = self.cells.iter()
+        let mut pairs: Vec<String> = self
+            .cells
+            .iter()
             .map(|(k, v)| format!("{} = {}", k, v))
             .collect();
         pairs.sort();

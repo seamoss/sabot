@@ -1,6 +1,6 @@
-use rusqlite::{params_from_iter, types::Value as SqlValue, Connection};
-use std::collections::HashMap;
 use crate::value::Value;
+use rusqlite::{Connection, params_from_iter, types::Value as SqlValue};
+use std::collections::HashMap;
 
 /// Convert a Sabo Value to a rusqlite parameter
 fn sabo_to_sql(val: &Value) -> SqlValue {
@@ -20,31 +20,30 @@ fn sql_to_sabo(val: &rusqlite::types::ValueRef) -> Value {
         rusqlite::types::ValueRef::Null => Value::Symbol("null".to_string()),
         rusqlite::types::ValueRef::Integer(n) => Value::Int(*n),
         rusqlite::types::ValueRef::Real(f) => Value::Float(*f),
-        rusqlite::types::ValueRef::Text(s) => {
-            Value::Str(String::from_utf8_lossy(s).to_string())
-        }
-        rusqlite::types::ValueRef::Blob(b) => {
-            Value::Str(format!("<blob:{} bytes>", b.len()))
-        }
+        rusqlite::types::ValueRef::Text(s) => Value::Str(String::from_utf8_lossy(s).to_string()),
+        rusqlite::types::ValueRef::Blob(b) => Value::Str(format!("<blob:{} bytes>", b.len())),
     }
 }
 
 /// Execute a query and return results as a list of maps
 pub fn query(conn: &Connection, sql: &str, params: &[Value]) -> Result<Value, String> {
     let sql_params: Vec<SqlValue> = params.iter().map(sabo_to_sql).collect();
-    let mut stmt = conn.prepare(sql)
+    let mut stmt = conn
+        .prepare(sql)
         .map_err(|e| format!("SQL prepare error: {}", e))?;
 
     let column_names: Vec<String> = stmt.column_names().iter().map(|s| s.to_string()).collect();
 
-    let rows = stmt.query_map(params_from_iter(sql_params), |row| {
-        let mut map = HashMap::new();
-        for (i, name) in column_names.iter().enumerate() {
-            let val = row.get_ref(i).unwrap();
-            map.insert(Value::Str(name.clone()), sql_to_sabo(&val));
-        }
-        Ok(Value::Map(map))
-    }).map_err(|e| format!("SQL query error: {}", e))?;
+    let rows = stmt
+        .query_map(params_from_iter(sql_params), |row| {
+            let mut map = HashMap::new();
+            for (i, name) in column_names.iter().enumerate() {
+                let val = row.get_ref(i).unwrap();
+                map.insert(Value::Str(name.clone()), sql_to_sabo(&val));
+            }
+            Ok(Value::Map(map))
+        })
+        .map_err(|e| format!("SQL query error: {}", e))?;
 
     let mut results = Vec::new();
     for row in rows {
