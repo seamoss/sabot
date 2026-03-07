@@ -1,0 +1,19 @@
+# Sabo source files
+*.sabo text eol=lf diff=sabo linguist-language=Sabo
+
+# Rust source
+*.rs text eol=lf diff=rust
+
+# Documentation
+*.md text eol=lf
+*.toml text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+
+# Binary / generated
+Cargo.lock text eol=lf
+*.lock text eol=lf
+
+# Shell scripts
+*.sh text eol=lf
