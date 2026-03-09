@@ -115,8 +115,16 @@ fn base64_encode(data: &[u8]) -> String {
     let mut i = 0;
     while i < data.len() {
         let b0 = data[i] as u32;
-        let b1 = if i + 1 < data.len() { data[i + 1] as u32 } else { 0 };
-        let b2 = if i + 2 < data.len() { data[i + 2] as u32 } else { 0 };
+        let b1 = if i + 1 < data.len() {
+            data[i + 1] as u32
+        } else {
+            0
+        };
+        let b2 = if i + 2 < data.len() {
+            data[i + 2] as u32
+        } else {
+            0
+        };
 
         let triple = (b0 << 16) | (b1 << 8) | b2;
 
@@ -347,7 +355,9 @@ fn write_frame(
             .map_err(|e| format!("ws write error: {}", e))?;
     }
 
-    stream.flush().map_err(|e| format!("ws flush error: {}", e))?;
+    stream
+        .flush()
+        .map_err(|e| format!("ws flush error: {}", e))?;
     Ok(())
 }
 
@@ -455,7 +465,7 @@ fn ws_connect(vm: &mut VM) -> Result<(), String> {
             return Err(format!(
                 "'ws_connect' expects a string URL, got {}",
                 other.type_name()
-            ))
+            ));
         }
     };
 
@@ -561,7 +571,7 @@ fn ws_send(vm: &mut VM) -> Result<(), String> {
             return Err(format!(
                 "'ws_send' expects an int conn_id, got {}",
                 other.type_name()
-            ))
+            ));
         }
     };
 
@@ -571,7 +581,7 @@ fn ws_send(vm: &mut VM) -> Result<(), String> {
             return Err(format!(
                 "'ws_send' expects a string message, got {}",
                 other.type_name()
-            ))
+            ));
         }
     };
 
@@ -580,12 +590,8 @@ fn ws_send(vm: &mut VM) -> Result<(), String> {
         .lock()
         .map_err(|_| "ws connection lock poisoned".to_string())?;
 
-    write_frame(
-        &mut conn.stream,
-        &WsOpcode::Text,
-        msg.as_bytes(),
-        conn.is_client,
-    )?;
+    let mask = conn.is_client;
+    write_frame(&mut conn.stream, &WsOpcode::Text, msg.as_bytes(), mask)?;
 
     Ok(())
 }
@@ -599,7 +605,7 @@ fn ws_recv(vm: &mut VM) -> Result<(), String> {
             return Err(format!(
                 "'ws_recv' expects an int conn_id, got {}",
                 other.type_name()
-            ))
+            ));
         }
     };
 
@@ -636,7 +642,8 @@ fn ws_recv(vm: &mut VM) -> Result<(), String> {
             }
             WsOpcode::Ping => {
                 // Auto-respond with pong, then continue reading
-                send_pong(&mut conn.stream, &frame.payload, conn.is_client)?;
+                let mask = conn.is_client;
+                send_pong(&mut conn.stream, &frame.payload, mask)?;
                 continue;
             }
             WsOpcode::Pong => {
@@ -664,7 +671,7 @@ fn ws_close(vm: &mut VM) -> Result<(), String> {
             return Err(format!(
                 "'ws_close' expects an int conn_id, got {}",
                 other.type_name()
-            ))
+            ));
         }
     };
 
@@ -672,7 +679,8 @@ fn ws_close(vm: &mut VM) -> Result<(), String> {
     let conn_arc = get_conn(&vm.ws_connections, id);
     if let Ok(arc) = conn_arc {
         if let Ok(mut conn) = arc.lock() {
-            let _ = write_frame(&mut conn.stream, &WsOpcode::Close, &[], conn.is_client);
+            let mask = conn.is_client;
+            let _ = write_frame(&mut conn.stream, &WsOpcode::Close, &[], mask);
         }
     }
 
@@ -689,16 +697,19 @@ fn ws_status(vm: &mut VM) -> Result<(), String> {
             return Err(format!(
                 "'ws_status' expects an int conn_id, got {}",
                 other.type_name()
-            ))
+            ));
         }
     };
 
-    let conns = vm
-        .ws_connections
-        .lock()
-        .map_err(|_| "ws connection registry lock poisoned".to_string())?;
+    let is_open = {
+        let conns = vm
+            .ws_connections
+            .lock()
+            .map_err(|_| "ws connection registry lock poisoned".to_string())?;
+        conns.contains_key(&id)
+    };
 
-    if conns.contains_key(&id) {
+    if is_open {
         vm.push_val(Value::Symbol("open".to_string()));
     } else {
         vm.push_val(Value::Symbol("closed".to_string()));
@@ -721,7 +732,7 @@ fn ws_route_builtin(vm: &mut VM) -> Result<(), String> {
             return Err(format!(
                 "'ws_route' expects a string path, got {}",
                 other.type_name()
-            ))
+            ));
         }
     };
 
@@ -731,7 +742,7 @@ fn ws_route_builtin(vm: &mut VM) -> Result<(), String> {
             return Err(format!(
                 "'ws_route' expects a quotation handler, got {}",
                 other.type_name()
-            ))
+            ));
         }
     };
 

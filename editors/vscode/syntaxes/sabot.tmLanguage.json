@@ -143,7 +143,7 @@
         },
         {
           "comment": "Concurrency",
-          "match": "\\b(spawn|spawn_linked|await|await_all|await_any|send|recv|try_recv|channel|ch_send|ch_recv|ch_try_recv|ch_close|cancel|cancelled\\?|timeout|select)\\b",
+          "match": "\\b(spawn|spawn_linked|await|await_all|await_any|send|recv|try_recv|channel|ch_send|ch_recv|ch_try_recv|ch_close|cancel|cancelled\\?|timeout|select|poll|coroutine|yield|resume|coro_done\\?)\\b",
           "name": "support.function.concurrency.sabot"
         },
         {
@@ -170,6 +170,11 @@
           "comment": "HTTP server",
           "match": "\\b(route|static_dir|serve)\\b",
           "name": "support.function.server.sabot"
+        },
+        {
+          "comment": "WebSocket",
+          "match": "\\b(ws_connect|ws_send|ws_recv|ws_close|ws_status|ws_route)\\b",
+          "name": "support.function.websocket.sabot"
         },
         {
           "comment": "SQLite database",

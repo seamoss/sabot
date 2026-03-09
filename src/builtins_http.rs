@@ -403,6 +403,7 @@ pub fn handle_connection(
     mut stream: TcpStream,
     routes: &[Route],
     static_dirs: &[StaticDir],
+    ws_routes: &[crate::builtins_ws::WsRoute],
     vm_template: &crate::vm::VM,
 ) {
     let start = Instant::now();
@@ -424,6 +425,35 @@ pub fn handle_connection(
 
     let method = req.method.clone();
     let path = req.path.clone();
+
+    // Check for WebSocket upgrade
+    if let Some(ws_key) = crate::builtins_ws::check_ws_upgrade(&req.headers) {
+        // Find matching WS route
+        if let Some(ws_route) = ws_routes.iter().find(|r| r.path == path) {
+            let handler = ws_route.handler.clone();
+            match crate::builtins_ws::ws_upgrade(
+                stream,
+                &ws_key,
+                &vm_template.ws_connections,
+                &vm_template.next_ws_id,
+            ) {
+                Ok(conn_id) => {
+                    log_request(&method, &path, 101, "ws upgrade", start);
+                    // Run the handler with the conn_id on the stack
+                    let mut child = vm_template.spawn_child();
+                    child.push_val(crate::value::Value::Int(conn_id as i64));
+                    if let Err(e) = child.run(handler) {
+                        eprintln!("  WS handler error: {}", e);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("  WS upgrade failed: {}", e);
+                }
+            }
+            return;
+        }
+        // No matching WS route — fall through to normal HTTP handling
+    }
 
     // Static files first
     if try_serve_static(&req, static_dirs, &mut stream) {

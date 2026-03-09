@@ -26,19 +26,20 @@
 18. [Error Handling](#error-handling)
 19. [Reactive Cells](#reactive-cells)
 20. [Concurrency](#concurrency)
-21. [File I/O](#file-io)
-22. [Shell Execution](#shell-execution)
-23. [HTTP](#http)
-24. [Serialization (JSON, YAML, TOML, Protobuf)](#serialization-json-yaml-toml-protobuf)
-25. [Observability (Tracing, Metrics, Logging)](#observability-tracing-metrics-logging)
-26. [Environment & System](#environment--system)
-27. [Module System](#module-system)
-28. [Testing](#testing)
-29. [Introspection & Debugging](#introspection--debugging)
-30. [Hot Reload](#hot-reload)
-31. [HTTP Server](#http-server)
-32. [REPL Commands](#repl-commands)
-33. [Complete Builtin Reference](#complete-builtin-reference)
+21. [WebSocket](#websocket)
+22. [File I/O](#file-io)
+23. [Shell Execution](#shell-execution)
+24. [HTTP](#http)
+25. [Serialization (JSON, YAML, TOML, Protobuf)](#serialization-json-yaml-toml-protobuf)
+26. [Observability (Tracing, Metrics, Logging)](#observability-tracing-metrics-logging)
+27. [Environment & System](#environment--system)
+28. [Module System](#module-system)
+29. [Testing](#testing)
+30. [Introspection & Debugging](#introspection--debugging)
+31. [Hot Reload](#hot-reload)
+32. [HTTP Server](#http-server)
+33. [REPL Commands](#repl-commands)
+34. [Complete Builtin Reference](#complete-builtin-reference)
 
 ---
 
@@ -984,6 +985,135 @@ let ch2 = dup
 {ch1, ch2} select     -- {ch1_id, "hello"}
 ```
 
+### Poll (Non-Blocking Task Check)
+
+`poll` checks a spawned task without blocking. Returns immediately:
+
+| Word | Stack Effect | Description |
+|------|-------------|-------------|
+| `poll` | `( task_id -- result )` | Non-blocking check on a spawned task |
+
+Return values:
+- `{:done, value}` — task completed successfully
+- `{:error, msg}` — task failed
+- `:pending` — task still running
+
+```sabot
+let tid = [100 sleep_ms 42] spawn
+tid poll       -- :pending (task still sleeping)
+200 sleep_ms
+tid poll       -- {:done, 42}
+```
+
+### Coroutines
+
+Coroutines are cooperative, suspendable computations. Unlike spawned tasks, coroutines share the caller's thread and explicitly yield control.
+
+| Word | Stack Effect | Description |
+|------|-------------|-------------|
+| `coroutine` | `( quot -- coro_id )` | Create a coroutine from a quotation |
+| `resume` | `( value coro_id -- yielded_value )` | Resume coroutine, sending it a value |
+| `yield` | `( value -- resume_value )` | Yield a value from inside a coroutine |
+| `coro_done?` | `( coro_id -- bool )` | Check if coroutine has finished |
+
+#### Generator Pattern
+
+```sabot
+-- A coroutine that yields 1, 2, 3 then returns 4
+let gen = [1 yield drop 2 yield drop 3 yield drop 4] coroutine
+
+:go gen resume    -- 1
+:go gen resume    -- 2
+:go gen resume    -- 3
+gen coro_done?    -- false
+
+:go gen resume    -- 4
+gen coro_done?    -- true
+```
+
+The first `resume` always sends `:go` (or any value) to start the coroutine. Each `yield` inside the coroutine suspends it and sends a value back to the caller.
+
+#### Resume Values
+
+Values sent via `resume` are received by `yield` inside the coroutine:
+
+```sabot
+-- Coroutine that doubles received values
+let doubler = [
+  "ready" yield   -- yield "ready", receive first value
+  2 * yield       -- double it, yield result, receive next
+  2 * yield       -- double again
+  drop :finished
+] coroutine
+
+:go doubler resume     -- "ready"
+5 doubler resume       -- 10
+7 doubler resume       -- 14
+:go doubler resume     -- :finished
+```
+
+#### Implementation
+
+Each coroutine runs in its own thread, communicating with the parent via two channels. `yield` sends a value on the yield channel and blocks waiting on the resume channel. `resume` sends on the resume channel and blocks on the yield channel. This gives deterministic, ping-pong execution despite using threads.
+
+---
+
+## WebSocket
+
+Sabot has built-in WebSocket support (RFC 6455) for both client and server use.
+
+### Client Builtins
+
+| Word | Stack Effect | Description |
+|------|-------------|-------------|
+| `ws_connect` | `( url -- conn_id )` | Open a WebSocket connection to a server |
+| `ws_send` | `( message conn_id -- )` | Send a text message |
+| `ws_recv` | `( conn_id -- message )` | Blocking receive (returns text frames) |
+| `ws_close` | `( conn_id -- )` | Close a connection |
+| `ws_status` | `( conn_id -- bool )` | Check if connection is open |
+
+```sabot
+-- Connect to a WebSocket server
+let ws = "ws://localhost:8080/ws" ws_connect
+
+"hello" ws ws_send
+ws ws_recv println    -- server's response
+
+ws ws_status println  -- true
+ws ws_close
+ws ws_status println  -- false
+```
+
+### Server-Side WebSocket Routes
+
+| Word | Stack Effect | Description |
+|------|-------------|-------------|
+| `ws_route` | `( quot path -- )` | Register a WebSocket route handler |
+
+WebSocket routes integrate with the HTTP server. When a client sends a WebSocket upgrade request matching a registered path, the connection is upgraded and the handler quotation runs with the `conn_id` on the stack.
+
+```sabot
+-- Echo server: receives messages and sends them back
+: ws_echo
+  [conn_id] ->
+    -- conn_id is on the stack
+    -- Use ws_recv/ws_send in a loop
+    conn_id ws_recv
+    conn_id ws_send
+;
+
+[ws_echo] "/ws" ws_route
+8080 serve
+```
+
+### Architecture Notes
+
+- Connections are tracked in a shared `Arc<Mutex<HashMap>>` — accessible from parent and child VMs
+- Each connection gets a unique integer ID
+- The WebSocket implementation includes inline SHA-1 and base64 (no external crypto dependencies)
+- Server-side WS handlers run in the HTTP serve loop's request thread
+- Client connections use masking per RFC 6455; server connections do not
+
 ---
 
 ## File I/O
@@ -1599,6 +1729,14 @@ The REPL supports **multi-line input** — if your input has unclosed delimiters
 
 After each evaluation, the REPL displays the stack (if non-empty) in `<val1 val2 ...>` format.
 
+### Tab Completion
+
+The REPL provides tab completion for all builtins, user-defined words, dot-commands, and `quit`/`exit`. Completions auto-update after new words are defined. Powered by `rustyline`.
+
+### History
+
+Command history is persisted to `~/.sabot_history` across sessions. Use up/down arrows to navigate history. Ctrl-C clears the current input buffer; Ctrl-D exits.
+
 ---
 
 ## Complete Builtin Reference
@@ -1643,7 +1781,10 @@ After each evaluation, the REPL displays the stack (if non-empty) in `<val1 val2
 `cell`, `get_cell`, `set_cell`, `computed`, `when`
 
 ### Concurrency
-`spawn`, `await`, `send`, `recv`, `try_recv`, `channel`, `ch_send`, `ch_recv`, `ch_try_recv`, `ch_close`, `spawn_linked`, `await_all`, `await_any`, `cancel`, `cancelled?`, `timeout`, `select`
+`spawn`, `await`, `send`, `recv`, `try_recv`, `channel`, `ch_send`, `ch_recv`, `ch_try_recv`, `ch_close`, `spawn_linked`, `await_all`, `await_any`, `cancel`, `cancelled?`, `timeout`, `select`, `poll`, `coroutine`, `yield`, `resume`, `coro_done?`
+
+### WebSocket
+`ws_connect`, `ws_send`, `ws_recv`, `ws_close`, `ws_status`, `ws_route`
 
 ### File I/O
 `read_file`, `read_lines`, `write_file`, `append_file`, `file_exists`, `ls`
@@ -1730,7 +1871,8 @@ VM (src/vm.rs)
 | `src/builtins_io.rs` | ~310 | External builtins: file I/O, shell, HTTP, env, time |
 | `src/builtins_serial.rs` | ~437 | Serialization: JSON, YAML, TOML, protobuf-style binary |
 | `src/builtins_otel.rs` | ~680 | Observability: tracing spans, metrics, structured logging |
-| `src/main.rs` | ~170 | Entry point: REPL, file runner, test runner |
+| `src/builtins_ws.rs` | ~835 | WebSocket: client/server, RFC 6455, inline SHA-1/base64 |
+| `src/main.rs` | ~490 | Entry point: REPL (rustyline), file runner, test runner, formatter, profiler |
 
 ### Key VM Data Structures
 
@@ -1752,6 +1894,12 @@ pub struct VM {
     channels: Arc<Mutex<HashMap<String, VecDeque<Value>>>>,
     next_task_id: u64,
     task_results: Arc<Mutex<HashMap<u64, Option<Result<Value, String>>>>>,
+
+    // WebSocket
+    ws_connections: Arc<Mutex<HashMap<u64, Arc<Mutex<WsConn>>>>>,
+
+    // Coroutines
+    coroutines: HashMap<u64, Coroutine>,
 }
 
 struct CallFrame {
@@ -1807,4 +1955,4 @@ Return
 
 ### Dependency
 
-External dependencies: `ureq` for HTTP, `serde_json`/`serde_yaml`/`toml` for text serialization, `rusqlite` for SQLite, `regex` for regular expressions. Everything else — the lexer, parser, compiler, VM, reactive system, concurrency, and binary encoding — is implemented from scratch.
+External dependencies: `ureq` for HTTP, `serde_json`/`serde_yaml`/`toml` for text serialization, `rusqlite` for SQLite, `regex` for regular expressions, `rustyline` for REPL line editing. Everything else — the lexer, parser, compiler, VM, reactive system, concurrency, WebSocket, and binary encoding — is implemented from scratch.
