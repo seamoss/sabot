@@ -1,0 +1,149 @@
+-- todo_simple.sabot
+-- A todo list that lives in memory. No database. No ceremony.
+-- Just a map, a counter, and pattern matching doing what they do best.
+-- Trust the stack.
+
+-- === STATE ===
+
+#{} "todos" cell        -- id => #{"title" => str, "done" => bool}
+0 "next_id" cell        -- auto-increment
+
+-- === CORE WORDS ===
+
+: next_id!
+  [] -> next_id dup 1 + "next_id" set_cell
+;
+
+: make_todo [title] -> #{} "title" title set "done" false set ;
+
+: add!
+  [title] ->
+    next_id! >id
+    todos id> dup >id2 to_str title make_todo set "todos" set_cell
+    "  + [" print id2> print "] " print title println
+;
+
+: toggle!
+  [id, val] ->
+    todos id to_str has
+    [
+      todos id to_str get >item
+      item> "title" get >t
+      #{} "title" t> set "done" val set >updated
+      todos id to_str updated> set "todos" set_cell
+      true
+    ]
+    [false]
+    if_else
+;
+
+: done!
+  [id] ->
+    id true toggle!
+    ["  done." println]
+    ["  no such todo." println]
+    if_else
+;
+
+: undone!
+  [id] ->
+    id false toggle!
+    ["  reopened." println]
+    ["  no such todo." println]
+    if_else
+;
+
+: remove!
+  [id] ->
+    todos id to_str has
+    [
+      id to_str "rm_key" cell
+      todos keys [rm_key !=] filter
+      #{} swap [dup >k swap todos k> dup >k2 get >v k2> v> set] each
+      "todos" set_cell
+      "  removed." println
+    ]
+    ["  no such todo." println]
+    if_else
+;
+
+: show_todo
+  [key] ->
+    todos key get dup
+    "done" get ["x"] [" "] if_else >mark
+    "title" get >title
+    "  [" mark> + "] " + key + " - " + title> + println
+;
+
+: list!
+  [] ->
+    todos keys len 0 ==
+    ["  nothing yet." println]
+    [todos keys sort [show_todo] each]
+    if_else
+;
+
+: count!
+  [] ->
+    todos keys len
+    todos values ["done" get] filter len
+    over over - >pending
+    to_str >done
+    to_str >total
+    "  " total> + " total, " + done> + " done, " + pending> to_str + " pending" + println
+;
+
+-- === DISPATCH ===
+
+: dispatch
+  ["add", ""] -> "  add what?" println
+  ["done", ""] -> "  done which id?" println
+  ["undo", ""] -> "  undo which id?" println
+  ["rm", ""] -> "  rm which id?" println
+  ["add", arg] -> arg add!
+  ["done", arg] -> arg to_int done!
+  ["undo", arg] -> arg to_int undone!
+  ["rm", arg] -> arg to_int remove!
+  ["ls", _] -> list!
+  ["count", _] -> count!
+  ["quit", _] -> "  bye." println :quit throw
+  ["help", _] -> show_help
+  ["", _] -> 0 drop
+  [_, _] -> "  ? try 'help'" println
+;
+
+: show_help
+  [] ->
+    "" println
+    "  commands:" println
+    "    add <text>    add a todo" println
+    "    done <id>     mark done" println
+    "    undo <id>     mark not done" println
+    "    rm <id>       remove" println
+    "    ls            list all" println
+    "    count         summary" println
+    "    quit          exit" println
+;
+
+: split_first
+  [s] ->
+    s " " split dup len 1 >
+    [dup head >cmd tail " " join >rest cmd> rest>]
+    [head ""]
+    if_else
+;
+
+: main_loop
+  [] ->
+    "todo> " input trim
+    split_first dispatch
+    main_loop
+;
+
+-- === GO ===
+
+"" println
+"  --- todo_simple ---" println
+"  type 'help' for commands" println
+
+[main_loop] try drop
