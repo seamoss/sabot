@@ -65,15 +65,15 @@ sync_file "$ROOT/Cargo.toml" \
     'version = "[0-9]*\.[0-9]*\.[0-9]*"' \
     "version = \"$NEW_VERSION\""
 
-# src/main.rs: Sabo vX.Y.Z
+# src/main.rs: Sabot vX.Y.Z
 sync_file "$ROOT/src/main.rs" \
-    'Sabo v[0-9]*\.[0-9]*\.[0-9]*' \
-    "Sabo v$NEW_VERSION"
+    'Sabot v[0-9]*\.[0-9]*\.[0-9]*' \
+    "Sabot v$NEW_VERSION"
 
-# README.md: Sabo vX.Y.Z
+# README.md: Sabot vX.Y.Z
 sync_file "$ROOT/README.md" \
-    'Sabo v[0-9]*\.[0-9]*\.[0-9]*' \
-    "Sabo v$NEW_VERSION"
+    'Sabot v[0-9]*\.[0-9]*\.[0-9]*' \
+    "Sabot v$NEW_VERSION"
 
 # docs/LANGUAGE.md: vX.Y.Z in title
 sync_file "$ROOT/docs/LANGUAGE.md" \

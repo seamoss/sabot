@@ -1,13 +1,13 @@
 -- =============================================
 --  G I T H U B   S T A T S
 --  Fetch and display GitHub user info via API
---  Usage: sabo programs/github_stats.sabo <username>
+--  Usage: sabot programs/github_stats.sabot <username>
 -- =============================================
 
 let all_args = args
 all_args len 3 <
 [
-  "Usage: sabo programs/github_stats.sabo <username>" println
+  "Usage: sabot programs/github_stats.sabot <username>" println
   "" "error" error
 ] if_true
 

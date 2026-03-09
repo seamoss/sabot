@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
-  "name": "Sabo",
-  "scopeName": "source.sabo",
+  "name": "Sabot",
+  "scopeName": "source.sabot",
   "patterns": [
     { "include": "#comment" },
     { "include": "#string" },
@@ -18,30 +18,30 @@
   "repository": {
     "comment": {
       "match": "--.*$",
-      "name": "comment.line.double-dash.sabo"
+      "name": "comment.line.double-dash.sabot"
     },
 
     "string": {
-      "name": "string.quoted.double.sabo",
+      "name": "string.quoted.double.sabot",
       "begin": "\"",
       "end": "\"",
       "patterns": [
         {
-          "name": "constant.character.escape.sabo",
+          "name": "constant.character.escape.sabot",
           "match": "\\\\[nrt\\\\\"{}]"
         },
         {
-          "name": "meta.interpolation.sabo",
+          "name": "meta.interpolation.sabot",
           "match": "\\{[^}]*\\}",
           "captures": {
             "0": { "patterns": [
               {
                 "match": "[{}]",
-                "name": "punctuation.definition.interpolation.sabo"
+                "name": "punctuation.definition.interpolation.sabot"
               },
               {
                 "match": "[^{}]+",
-                "name": "variable.other.interpolation.sabo"
+                "name": "variable.other.interpolation.sabot"
               }
             ]}
           }
@@ -53,18 +53,18 @@
       "patterns": [
         {
           "match": "(?<![a-zA-Z0-9_])-?[0-9]+\\.[0-9]+\\b",
-          "name": "constant.numeric.float.sabo"
+          "name": "constant.numeric.float.sabot"
         },
         {
           "match": "(?<![a-zA-Z0-9_.])-?[0-9]+\\b",
-          "name": "constant.numeric.integer.sabo"
+          "name": "constant.numeric.integer.sabot"
         }
       ]
     },
 
     "symbol": {
       "match": ":[a-zA-Z_][a-zA-Z0-9_]*[?!]?",
-      "name": "constant.other.symbol.sabo"
+      "name": "constant.other.symbol.sabot"
     },
 
     "word-definition": {
@@ -73,25 +73,25 @@
           "comment": "Word definition start — colon followed by name",
           "match": "(:)\\s+([a-zA-Z_][a-zA-Z0-9_]*[?!]?)",
           "captures": {
-            "1": { "name": "keyword.control.definition.sabo" },
-            "2": { "name": "entity.name.function.sabo" }
+            "1": { "name": "keyword.control.definition.sabot" },
+            "2": { "name": "entity.name.function.sabot" }
           }
         },
         {
           "match": ";",
-          "name": "keyword.control.definition.end.sabo"
+          "name": "keyword.control.definition.end.sabot"
         }
       ]
     },
 
     "keyword": {
       "match": "\\b(let|where|and|or|not|import|try)\\b",
-      "name": "keyword.control.sabo"
+      "name": "keyword.control.sabot"
     },
 
     "constant": {
       "match": "\\b(true|false)\\b",
-      "name": "constant.language.boolean.sabo"
+      "name": "constant.language.boolean.sabot"
     },
 
     "builtin": {
@@ -99,127 +99,127 @@
         {
           "comment": "Stack operations",
           "match": "\\b(dup|drop|swap|over|rot|depth)\\b",
-          "name": "support.function.stack.sabo"
+          "name": "support.function.stack.sabot"
         },
         {
           "comment": "I/O",
           "match": "\\b(print|println|input|stdin_read|stdin_lines)\\b",
-          "name": "support.function.io.sabo"
+          "name": "support.function.io.sabot"
         },
         {
           "comment": "Control flow",
           "match": "\\b(if_else|if_true|apply)\\b",
-          "name": "keyword.control.flow.sabo"
+          "name": "keyword.control.flow.sabot"
         },
         {
           "comment": "Type and conversion",
           "match": "\\b(type_of|type|to_str|to_int|to_float)\\b",
-          "name": "support.function.type.sabo"
+          "name": "support.function.type.sabot"
         },
         {
           "comment": "String operations",
           "match": "\\b(split|join|trim|contains|starts_with|lowercase|uppercase|replace|chars|reverse|len)\\b",
-          "name": "support.function.string.sabo"
+          "name": "support.function.string.sabot"
         },
         {
           "comment": "List operations",
           "match": "\\b(head|tail|cons|append|nth|empty|sort|range)\\b",
-          "name": "support.function.list.sabo"
+          "name": "support.function.list.sabot"
         },
         {
           "comment": "Higher-order",
           "match": "\\b(map|map_list|filter|fold|each)\\b",
-          "name": "support.function.higher-order.sabo"
+          "name": "support.function.higher-order.sabot"
         },
         {
           "comment": "Map operations",
           "match": "\\b(get|get_or|set|has|keys|values|merge)\\b",
-          "name": "support.function.map.sabo"
+          "name": "support.function.map.sabot"
         },
         {
           "comment": "Reactive cells",
           "match": "\\b(cell|get_cell|set_cell|computed|when)\\b",
-          "name": "support.function.reactive.sabo"
+          "name": "support.function.reactive.sabot"
         },
         {
           "comment": "Concurrency",
           "match": "\\b(spawn|spawn_linked|await|await_all|await_any|send|recv|try_recv|channel|ch_send|ch_recv|ch_try_recv|ch_close|cancel|cancelled\\?|timeout|select)\\b",
-          "name": "support.function.concurrency.sabo"
+          "name": "support.function.concurrency.sabot"
         },
         {
           "comment": "File I/O",
           "match": "\\b(read_file|read_lines|write_file|append_file|file_exists|ls)\\b",
-          "name": "support.function.file.sabo"
+          "name": "support.function.file.sabot"
         },
         {
           "comment": "Shell and system",
           "match": "\\b(exec|exec_full|env_get|env_all|args|time_ms|sleep_ms)\\b",
-          "name": "support.function.system.sabo"
+          "name": "support.function.system.sabot"
         },
         {
           "comment": "HTTP client",
           "match": "\\b(http_get|http_post)\\b",
-          "name": "support.function.http.sabo"
+          "name": "support.function.http.sabot"
         },
         {
           "comment": "Serialization (JSON, YAML, TOML, Protobuf)",
           "match": "\\b(json_parse|json_encode|json_pretty|yaml_parse|yaml_encode|toml_parse|toml_encode|proto_encode|proto_decode)\\b",
-          "name": "support.function.serial.sabo"
+          "name": "support.function.serial.sabot"
         },
         {
           "comment": "HTTP server",
           "match": "\\b(route|static_dir|serve)\\b",
-          "name": "support.function.server.sabo"
+          "name": "support.function.server.sabot"
         },
         {
           "comment": "SQLite database",
           "match": "\\b(db_open|db_close|db_exec|db_exec_params|db_query|db_query_params)\\b",
-          "name": "support.function.database.sabo"
+          "name": "support.function.database.sabot"
         },
         {
           "comment": "Testing",
           "match": "\\b(assert|assert_eq|assert_neq)\\b",
-          "name": "support.function.test.sabo"
+          "name": "support.function.test.sabot"
         },
         {
           "comment": "Memoization",
           "match": "\\b(memo|memo_clear)\\b",
-          "name": "support.function.memo.sabo"
+          "name": "support.function.memo.sabot"
         },
         {
           "comment": "Modules and reload",
           "match": "\\b(load|watch|poll_watch|backtrace|words|globals)\\b",
-          "name": "support.function.meta.sabo"
+          "name": "support.function.meta.sabot"
         },
         {
           "comment": "Regex",
           "match": "\\b(regex_match\\?|regex_find|regex_find_all|regex_replace|regex_split|regex_captures)\\b",
-          "name": "support.function.regex.sabo"
+          "name": "support.function.regex.sabot"
         },
         {
           "comment": "Error handling",
           "match": "\\b(throw|error|try)\\b",
-          "name": "keyword.control.error.sabo"
+          "name": "keyword.control.error.sabot"
         },
         {
           "comment": "Observability (tracing)",
           "match": "\\b(span_start|span_end|span|span_attr|span_event|span_error|spans_dump|spans_reset)\\b",
-          "name": "support.function.tracing.sabo"
+          "name": "support.function.tracing.sabot"
         },
         {
           "comment": "Observability (metrics)",
           "match": "\\b(counter_inc|counter_add|gauge_set|gauge_inc|gauge_dec|histogram_record|metrics_dump|metrics_reset)\\b",
-          "name": "support.function.metrics.sabo"
+          "name": "support.function.metrics.sabot"
         },
         {
           "comment": "Observability (logging)",
           "match": "\\b(log_debug|log_info|log_warn|log_error|log_with|log_level|logs_dump|logs_reset)\\b",
-          "name": "support.function.logging.sabo"
+          "name": "support.function.logging.sabot"
         },
         {
           "comment": "Observability (combined)",
           "match": "\\b(otel_dump|otel_reset)\\b",
-          "name": "support.function.otel.sabo"
+          "name": "support.function.otel.sabot"
         }
       ]
     },
@@ -229,12 +229,12 @@
         {
           "comment": "Push to named stack: >name",
           "match": ">[a-zA-Z_][a-zA-Z0-9_]*[?!]?",
-          "name": "variable.other.named-stack.push.sabo"
+          "name": "variable.other.named-stack.push.sabot"
         },
         {
           "comment": "Pop from named stack: name>",
           "match": "[a-zA-Z_][a-zA-Z0-9_]*[?!]?>",
-          "name": "variable.other.named-stack.pop.sabo"
+          "name": "variable.other.named-stack.pop.sabot"
         }
       ]
     },
@@ -243,27 +243,27 @@
       "patterns": [
         {
           "match": "->",
-          "name": "keyword.operator.arrow.sabo"
+          "name": "keyword.operator.arrow.sabot"
         },
         {
           "match": "=>",
-          "name": "keyword.operator.fat-arrow.sabo"
+          "name": "keyword.operator.fat-arrow.sabot"
         },
         {
           "match": "==|!=|<=|>=|<|>",
-          "name": "keyword.operator.comparison.sabo"
+          "name": "keyword.operator.comparison.sabot"
         },
         {
           "match": "[+\\-*/%]",
-          "name": "keyword.operator.arithmetic.sabo"
+          "name": "keyword.operator.arithmetic.sabot"
         },
         {
           "match": "~",
-          "name": "keyword.operator.apply.sabo"
+          "name": "keyword.operator.apply.sabot"
         },
         {
           "match": "\\.",
-          "name": "keyword.operator.compose.sabo"
+          "name": "keyword.operator.compose.sabot"
         }
       ]
     },
@@ -272,11 +272,11 @@
       "patterns": [
         {
           "match": "#\\{",
-          "name": "punctuation.definition.map.begin.sabo"
+          "name": "punctuation.definition.map.begin.sabot"
         },
         {
           "match": "[\\[\\]{}(),]",
-          "name": "punctuation.bracket.sabo"
+          "name": "punctuation.bracket.sabot"
         }
       ]
     }

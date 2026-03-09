@@ -1,4 +1,4 @@
-//! HTTP server support for Sabo.
+//! HTTP server support for Sabot.
 //! Provides request parsing, response serialization, route matching,
 //! static file serving, and the connection handler.
 
@@ -254,7 +254,7 @@ fn mime_type(path: &str) -> &'static str {
     }
 }
 
-// ---- Convert request to Sabo value map ----
+// ---- Convert request to Sabot value map ----
 
 fn request_to_value(req: &HttpRequest, params: &[(String, String)]) -> Value {
     let mut map: HashMap<Value, Value> = HashMap::new();
@@ -286,17 +286,17 @@ fn request_to_value(req: &HttpRequest, params: &[(String, String)]) -> Value {
     Value::Map(map)
 }
 
-// ---- Extract response from Sabo value ----
+// ---- Extract response from Sabot value ----
 
-struct SaboResponse {
+struct SabotResponse {
     status: u16,
     content_type: String,
     headers: Vec<(String, String)>,
     body: String,
 }
 
-fn value_to_response(val: &Value) -> SaboResponse {
-    let mut resp = SaboResponse {
+fn value_to_response(val: &Value) -> SabotResponse {
+    let mut resp = SabotResponse {
         status: 200,
         content_type: "text/plain; charset=utf-8".into(),
         headers: Vec::new(),

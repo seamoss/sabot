@@ -6,10 +6,10 @@ use crate::vm::VM;
 use std::collections::HashMap;
 
 // ============================================================
-// Shared: Sabo Value <-> serde_json::Value conversion
+// Shared: Sabot Value <-> serde_json::Value conversion
 // ============================================================
 
-fn sabo_to_serde(val: &Value) -> serde_json::Value {
+fn sabot_to_serde(val: &Value) -> serde_json::Value {
     match val {
         Value::Int(n) => serde_json::Value::Number((*n).into()),
         Value::Float(f) => serde_json::Number::from_f64(*f)
@@ -19,11 +19,11 @@ fn sabo_to_serde(val: &Value) -> serde_json::Value {
         Value::Symbol(s) if s == "null" => serde_json::Value::Null,
         Value::Symbol(s) => serde_json::Value::String(s.clone()),
         Value::Bool(b) => serde_json::Value::Bool(*b),
-        Value::List(items) => serde_json::Value::Array(items.iter().map(sabo_to_serde).collect()),
+        Value::List(items) => serde_json::Value::Array(items.iter().map(sabot_to_serde).collect()),
         Value::Map(map) => {
             let obj: serde_json::Map<String, serde_json::Value> = map
                 .iter()
-                .map(|(k, v)| (key_to_string(k), sabo_to_serde(v)))
+                .map(|(k, v)| (key_to_string(k), sabot_to_serde(v)))
                 .collect();
             serde_json::Value::Object(obj)
         }
@@ -31,7 +31,7 @@ fn sabo_to_serde(val: &Value) -> serde_json::Value {
     }
 }
 
-fn serde_to_sabo(val: serde_json::Value) -> Value {
+fn serde_to_sabot(val: serde_json::Value) -> Value {
     match val {
         serde_json::Value::Null => Value::Symbol("null".into()),
         serde_json::Value::Bool(b) => Value::Bool(b),
@@ -45,11 +45,11 @@ fn serde_to_sabo(val: serde_json::Value) -> Value {
             }
         }
         serde_json::Value::String(s) => Value::Str(s),
-        serde_json::Value::Array(arr) => Value::List(arr.into_iter().map(serde_to_sabo).collect()),
+        serde_json::Value::Array(arr) => Value::List(arr.into_iter().map(serde_to_sabot).collect()),
         serde_json::Value::Object(obj) => {
             let map: HashMap<Value, Value> = obj
                 .into_iter()
-                .map(|(k, v)| (Value::Str(k), serde_to_sabo(v)))
+                .map(|(k, v)| (Value::Str(k), serde_to_sabot(v)))
                 .collect();
             Value::Map(map)
         }
@@ -75,7 +75,7 @@ fn json_parse(vm: &mut VM) -> Result<(), String> {
         Value::Str(s) => {
             let parsed: serde_json::Value =
                 serde_json::from_str(&s).map_err(|e| format!("JSON parse error: {}", e))?;
-            vm.push_val(serde_to_sabo(parsed));
+            vm.push_val(serde_to_sabot(parsed));
             Ok(())
         }
         _ => Err(format!(
@@ -87,7 +87,7 @@ fn json_parse(vm: &mut VM) -> Result<(), String> {
 
 fn json_encode(vm: &mut VM) -> Result<(), String> {
     let val = vm.pop_val()?;
-    let json = sabo_to_serde(&val);
+    let json = sabot_to_serde(&val);
     let s = serde_json::to_string(&json).map_err(|e| format!("JSON encode error: {}", e))?;
     vm.push_val(Value::Str(s));
     Ok(())
@@ -95,7 +95,7 @@ fn json_encode(vm: &mut VM) -> Result<(), String> {
 
 fn json_pretty(vm: &mut VM) -> Result<(), String> {
     let val = vm.pop_val()?;
-    let json = sabo_to_serde(&val);
+    let json = sabot_to_serde(&val);
     let s = serde_json::to_string_pretty(&json).map_err(|e| format!("JSON encode error: {}", e))?;
     vm.push_val(Value::Str(s));
     Ok(())
@@ -105,7 +105,7 @@ fn json_pretty(vm: &mut VM) -> Result<(), String> {
 // YAML
 // ============================================================
 
-fn yaml_value_to_sabo(val: serde_yaml::Value) -> Value {
+fn yaml_value_to_sabot(val: serde_yaml::Value) -> Value {
     match val {
         serde_yaml::Value::Null => Value::Symbol("null".into()),
         serde_yaml::Value::Bool(b) => Value::Bool(b),
@@ -120,20 +120,20 @@ fn yaml_value_to_sabo(val: serde_yaml::Value) -> Value {
         }
         serde_yaml::Value::String(s) => Value::Str(s),
         serde_yaml::Value::Sequence(arr) => {
-            Value::List(arr.into_iter().map(yaml_value_to_sabo).collect())
+            Value::List(arr.into_iter().map(yaml_value_to_sabot).collect())
         }
         serde_yaml::Value::Mapping(map) => {
             let m: HashMap<Value, Value> = map
                 .into_iter()
-                .map(|(k, v)| (yaml_value_to_sabo(k), yaml_value_to_sabo(v)))
+                .map(|(k, v)| (yaml_value_to_sabot(k), yaml_value_to_sabot(v)))
                 .collect();
             Value::Map(m)
         }
-        serde_yaml::Value::Tagged(tagged) => yaml_value_to_sabo(tagged.value),
+        serde_yaml::Value::Tagged(tagged) => yaml_value_to_sabot(tagged.value),
     }
 }
 
-fn sabo_to_yaml(val: &Value) -> serde_yaml::Value {
+fn sabot_to_yaml(val: &Value) -> serde_yaml::Value {
     match val {
         Value::Int(n) => serde_yaml::Value::Number(serde_yaml::Number::from(*n)),
         Value::Float(f) => serde_yaml::Value::Number(serde_yaml::Number::from(*f)),
@@ -141,11 +141,11 @@ fn sabo_to_yaml(val: &Value) -> serde_yaml::Value {
         Value::Symbol(s) if s == "null" => serde_yaml::Value::Null,
         Value::Symbol(s) => serde_yaml::Value::String(s.clone()),
         Value::Bool(b) => serde_yaml::Value::Bool(*b),
-        Value::List(items) => serde_yaml::Value::Sequence(items.iter().map(sabo_to_yaml).collect()),
+        Value::List(items) => serde_yaml::Value::Sequence(items.iter().map(sabot_to_yaml).collect()),
         Value::Map(map) => {
             let m: serde_yaml::Mapping = map
                 .iter()
-                .map(|(k, v)| (sabo_to_yaml(k), sabo_to_yaml(v)))
+                .map(|(k, v)| (sabot_to_yaml(k), sabot_to_yaml(v)))
                 .collect();
             serde_yaml::Value::Mapping(m)
         }
@@ -159,7 +159,7 @@ fn yaml_parse(vm: &mut VM) -> Result<(), String> {
         Value::Str(s) => {
             let parsed: serde_yaml::Value =
                 serde_yaml::from_str(&s).map_err(|e| format!("YAML parse error: {}", e))?;
-            vm.push_val(yaml_value_to_sabo(parsed));
+            vm.push_val(yaml_value_to_sabot(parsed));
             Ok(())
         }
         _ => Err(format!(
@@ -171,7 +171,7 @@ fn yaml_parse(vm: &mut VM) -> Result<(), String> {
 
 fn yaml_encode(vm: &mut VM) -> Result<(), String> {
     let val = vm.pop_val()?;
-    let yaml = sabo_to_yaml(&val);
+    let yaml = sabot_to_yaml(&val);
     let s = serde_yaml::to_string(&yaml).map_err(|e| format!("YAML encode error: {}", e))?;
     vm.push_val(Value::Str(s));
     Ok(())
@@ -181,25 +181,25 @@ fn yaml_encode(vm: &mut VM) -> Result<(), String> {
 // TOML
 // ============================================================
 
-fn toml_value_to_sabo(val: toml::Value) -> Value {
+fn toml_value_to_sabot(val: toml::Value) -> Value {
     match val {
         toml::Value::String(s) => Value::Str(s),
         toml::Value::Integer(n) => Value::Int(n),
         toml::Value::Float(f) => Value::Float(f),
         toml::Value::Boolean(b) => Value::Bool(b),
         toml::Value::Datetime(dt) => Value::Str(dt.to_string()),
-        toml::Value::Array(arr) => Value::List(arr.into_iter().map(toml_value_to_sabo).collect()),
+        toml::Value::Array(arr) => Value::List(arr.into_iter().map(toml_value_to_sabot).collect()),
         toml::Value::Table(table) => {
             let map: HashMap<Value, Value> = table
                 .into_iter()
-                .map(|(k, v)| (Value::Str(k), toml_value_to_sabo(v)))
+                .map(|(k, v)| (Value::Str(k), toml_value_to_sabot(v)))
                 .collect();
             Value::Map(map)
         }
     }
 }
 
-fn sabo_to_toml(val: &Value) -> Result<toml::Value, String> {
+fn sabot_to_toml(val: &Value) -> Result<toml::Value, String> {
     match val {
         Value::Int(n) => Ok(toml::Value::Integer(*n)),
         Value::Float(f) => Ok(toml::Value::Float(*f)),
@@ -207,13 +207,13 @@ fn sabo_to_toml(val: &Value) -> Result<toml::Value, String> {
         Value::Symbol(s) => Ok(toml::Value::String(s.clone())),
         Value::Bool(b) => Ok(toml::Value::Boolean(*b)),
         Value::List(items) => {
-            let arr: Result<Vec<toml::Value>, String> = items.iter().map(sabo_to_toml).collect();
+            let arr: Result<Vec<toml::Value>, String> = items.iter().map(sabot_to_toml).collect();
             Ok(toml::Value::Array(arr?))
         }
         Value::Map(map) => {
             let mut table = toml::map::Map::new();
             for (k, v) in map {
-                table.insert(key_to_string(k), sabo_to_toml(v)?);
+                table.insert(key_to_string(k), sabot_to_toml(v)?);
             }
             Ok(toml::Value::Table(table))
         }
@@ -226,7 +226,7 @@ fn toml_parse(vm: &mut VM) -> Result<(), String> {
     match val {
         Value::Str(s) => {
             let parsed: toml::Value = s.parse().map_err(|e| format!("TOML parse error: {}", e))?;
-            vm.push_val(toml_value_to_sabo(parsed));
+            vm.push_val(toml_value_to_sabot(parsed));
             Ok(())
         }
         _ => Err(format!(
@@ -238,7 +238,7 @@ fn toml_parse(vm: &mut VM) -> Result<(), String> {
 
 fn toml_encode(vm: &mut VM) -> Result<(), String> {
     let val = vm.pop_val()?;
-    let toml_val = sabo_to_toml(&val)?;
+    let toml_val = sabot_to_toml(&val)?;
     // toml::to_string requires a table at the top level
     let s = match &toml_val {
         toml::Value::Table(_) => {

@@ -3,7 +3,7 @@
 -- =============================================
 
 "-- Importing math module --" println
-"examples/lib/math.sabo" import
+"examples/lib/math.sabot" import
 
 -- Use unqualified names
 5 square println

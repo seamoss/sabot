@@ -415,7 +415,7 @@ impl VM {
 
         // ---- Hot Reload ----
 
-        // "path" load -> (evaluates a .sabo file in current VM context)
+        // "path" load -> (evaluates a .sabot file in current VM context)
         self.builtins.insert("load".to_string(), |vm| {
             let path = vm.pop()?;
             match path {
@@ -578,7 +578,7 @@ impl VM {
             let path_val = vm.pop()?;
             match path_val {
                 Value::Str(path) => {
-                    // Derive module name from filename (e.g., "lib/math.sabo" -> "math")
+                    // Derive module name from filename (e.g., "lib/math.sabot" -> "math")
                     let module_name = std::path::Path::new(&path)
                         .file_stem()
                         .and_then(|s| s.to_str())
@@ -983,7 +983,7 @@ impl VM {
                     let listener = std::net::TcpListener::bind(&addr)
                         .map_err(|e| format!("Cannot bind to {}: {}", addr, e))?;
 
-                    println!("  Sabo HTTP server listening on http://localhost:{}", p);
+                    println!("  Sabot HTTP server listening on http://localhost:{}", p);
                     println!("  Press Ctrl+C to stop\n");
 
                     // Snapshot routes and static dirs

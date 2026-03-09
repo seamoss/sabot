@@ -1,10 +1,10 @@
 -- Sabo Benchmark Suite
--- Usage: sabo tools/bench.sabo
+-- Usage: sabot tools/bench.sabo
 
-"lib/math.sabo" import
-"lib/list.sabo" import
-"lib/string.sabo" import
-"lib/functional.sabo" import
+"lib/math.sabot" import
+"lib/list.sabot" import
+"lib/string.sabot" import
+"lib/functional.sabot" import
 
 -- Run a quotation and return elapsed ms
 : bench [name, q] ->

@@ -1,14 +1,14 @@
 -- =============================================
 --  W O R D C O U N T
 --  A wc-like utility written in Sabo
---  Usage: sabo programs/wordcount.sabo <file>
+--  Usage: sabot programs/wordcount.sabot <file>
 -- =============================================
 
 let all_args = args
 
 all_args len 3 <
 [
-  "Usage: sabo programs/wordcount.sabo <file>" println
+  "Usage: sabot programs/wordcount.sabot <file>" println
   "" "error" error
 ] if_true
 

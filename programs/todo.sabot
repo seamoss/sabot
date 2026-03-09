@@ -1,7 +1,7 @@
 -- =============================================
 --  S A B O   T O D O   A P P
 --  A CLI task manager backed by SQLite
---  Usage: sabo programs/todo.sabo [command] [args]
+--  Usage: sabot programs/todo.sabot [command] [args]
 -- =============================================
 
 -- Open (or create) the database

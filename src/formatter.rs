@@ -1,4 +1,4 @@
-// Sabo source code formatter
+// Sabot source code formatter
 // Works on raw source text to preserve comments.
 // Normalizes indentation and spacing within word definitions.
 

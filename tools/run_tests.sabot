@@ -1,18 +1,18 @@
 -- Sabo Test Runner
 -- Discovers and runs test files in a directory.
--- Usage: sabo tools/run_tests.sabo [directory]
+-- Usage: sabot tools/run_tests.sabot [directory]
 -- Defaults to "lib/" if no directory given.
 
-"lib/list.sabo" import
-"lib/string.sabo" import
+"lib/list.sabot" import
+"lib/string.sabot" import
 
 -- Check if filename looks like a test file
 : test_file? [name] -> name "_test" contains name "test_" contains or ;
-: sabo_file? [name] -> name ".sabo" contains ;
+: sabot_file? [name] -> name ".sabot" contains ;
 
 -- Find all test files in a directory
 : find_tests
-  [dir] -> dir ls [dup sabo_file? swap test_file? and] filter
+  [dir] -> dir ls [dup sabot_file? swap test_file? and] filter
 ;
 
 -- Build a 3-element list

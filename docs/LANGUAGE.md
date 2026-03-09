@@ -1,13 +1,13 @@
-# Sabo Language Reference v0.4.0
+# Sabot Language Reference v0.4.0
 
-**Sabo** is a stack-based, pattern-matching scripting language. Think Forth meets Erlang — postfix evaluation, quotations, reactive cells, channels, and hot reload, all compiled to bytecode and run on a custom Rust VM.
+**Sabot** is a stack-based, pattern-matching scripting language. Think Forth meets Erlang — postfix evaluation, quotations, reactive cells, channels, and hot reload, all compiled to bytecode and run on a custom Rust VM.
 
 ---
 
 ## Table of Contents
 
 1. [Philosophy & Design](#philosophy--design)
-2. [Running Sabo](#running-sabo)
+2. [Running Sabot](#running-sabot)
 3. [Syntax Overview](#syntax-overview)
 4. [Type System](#type-system)
 5. [Stack Operations](#stack-operations)
@@ -44,7 +44,7 @@
 
 ## Philosophy & Design
 
-Sabo is intentionally weird. It combines:
+Sabot is intentionally weird. It combines:
 
 - **Stack-based evaluation** (Forth): Everything is postfix. `2 3 +` pushes 2, pushes 3, adds them. No parentheses, no precedence rules. The stack *is* the program state.
 - **Pattern matching** (Erlang/Haskell): Word definitions match on the shape of the stack. `[0] -> 1` matches when the top of stack is zero. `[n] where n > 0 -> ...` adds guard conditions.
@@ -56,26 +56,26 @@ The implementation is a bytecode compiler + virtual machine written in Rust. Sou
 
 ---
 
-## Running Sabo
+## Running Sabot
 
 ```bash
 # REPL (interactive)
-sabo
+sabot
 
 # Run a file
-sabo examples/hello.sabo
+sabot examples/hello.sabot
 
 # Run tests
-sabo test examples/tier4_tests.sabo
+sabot test examples/tier4_tests.sabot
 ```
 
 ---
 
 ## Syntax Overview
 
-Sabo is **whitespace-delimited** and **postfix** (reverse Polish notation). Every token is either a literal that gets pushed to the stack, or an operation that consumes/produces stack values.
+Sabot is **whitespace-delimited** and **postfix** (reverse Polish notation). Every token is either a literal that gets pushed to the stack, or an operation that consumes/produces stack values.
 
-```sabo
+```sabot
 -- This is a comment (double dash to end of line)
 
 -- Literals push themselves onto the stack
@@ -102,7 +102,7 @@ true            -- boolean
 
 ## Type System
 
-Sabo has 8 value types:
+Sabot has 8 value types:
 
 | Type | Examples | Truthy? |
 |------|----------|---------|
@@ -136,14 +136,14 @@ The operand stack is the primary data structure. All computation flows through i
 | `stack` | `( -- )` | Print the entire stack (for debugging) |
 
 **Example:**
-```sabo
+```sabot
 1 2 3 rot      -- stack: 2 3 1
 drop            -- stack: 2 3
 dup             -- stack: 2 3 3
 swap            -- stack: 2 3 3 (wait, let me redo)
 ```
 
-```sabo
+```sabot
 10 20 swap      -- stack: 20 10
 over            -- stack: 20 10 20
 ```
@@ -164,7 +164,7 @@ All arithmetic is **postfix** (operands pushed first, then the operator).
 | `/` | int, float | Divide (integer division for ints) |
 | `%` | int, float | Modulo |
 
-```sabo
+```sabot
 10 3 /          -- 3 (integer division)
 10 3 %          -- 1
 10.0 3 /        -- 3.3333... (float)
@@ -188,7 +188,7 @@ All arithmetic is **postfix** (operands pushed first, then the operator).
 
 All comparisons push a `bool` onto the stack.
 
-```sabo
+```sabot
 5 3 >           -- true
 "abc" "def" <   -- true (lexicographic)
 1 1.0 ==        -- true (int/float cross-comparison)
@@ -243,7 +243,7 @@ Powered by the Rust `regex` crate. Patterns use standard regex syntax.
 | `regex_split` | `( str pattern -- list )` | Split string by regex pattern |
 | `regex_captures` | `( str pattern -- result )` | Capture groups: `{full, group1, ...}` or `:none` |
 
-```sabo
+```sabot
 "hello123" "\\d+" regex_match?         -- true
 "a1 b2 c3" "\\d+" regex_find_all      -- {"1", "2", "3"}
 "foo  bar" "\\s+" " " regex_replace    -- "foo bar"
@@ -251,7 +251,7 @@ Powered by the Rust `regex` crate. Patterns use standard regex syntax.
 
 **Note:** Use `\{` and `\}` inside strings to prevent interpolation when your regex needs literal braces (e.g., `"\\d\{4\}"` for `\d{4}`).
 
-```sabo
+```sabot
 "hello world" " " split     -- {"hello", "world"}
 {"a", "b", "c"} ", " join   -- "a, b, c"
 "  spaces  " trim            -- "spaces"
@@ -265,7 +265,7 @@ Powered by the Rust `regex` crate. Patterns use standard regex syntax.
 
 Lists are ordered, heterogeneous collections enclosed in `{...}`.
 
-```sabo
+```sabot
 {1, 2, 3}               -- a list of ints
 {1, "hello", true}       -- mixed types
 {}                       -- empty list
@@ -286,7 +286,7 @@ Lists are ordered, heterogeneous collections enclosed in `{...}`.
 | `sort` | `( list -- list )` | Sort (comparable values) |
 | `contains` | `( list val -- bool )` | Does list contain value? |
 
-```sabo
+```sabot
 {3, 1, 2} sort          -- {1, 2, 3}
 {1, 2, 3} head          -- 1
 {1, 2, 3} tail          -- {2, 3}
@@ -306,7 +306,7 @@ Lists are ordered, heterogeneous collections enclosed in `{...}`.
 | `each` | `( list quot -- )` | Apply quotation to each element (no result collection) |
 | `range` | `( start end -- list )` | Create list `{start, start+1, ..., end-1}` |
 
-```sabo
+```sabot
 {1, 2, 3, 4, 5} [2 *] map           -- {2, 4, 6, 8, 10}
 {1, 2, 3, 4, 5} [3 >] filter        -- {4, 5}
 {1, 2, 3, 4, 5} 0 [+] fold          -- 15
@@ -316,7 +316,7 @@ Lists are ordered, heterogeneous collections enclosed in `{...}`.
 
 **How fold works**: The accumulator starts at `init`. For each element, both the accumulator and element are on the stack, and the quotation is applied. The result becomes the new accumulator.
 
-```sabo
+```sabot
 -- Fold trace for {1, 2, 3} 0 [+] fold:
 -- stack: 0 1 → [+] → 1
 -- stack: 1 2 → [+] → 3
@@ -330,8 +330,8 @@ Lists are ordered, heterogeneous collections enclosed in `{...}`.
 
 Maps are ordered collections of key-value pairs, enclosed in `#{...}`.
 
-```sabo
-#{"name" => "Sabo", "version" => 4}
+```sabot
+#{"name" => "Sabot", "version" => 4}
 #{}                                    -- empty map
 #{1 => "one", 2 => "two"}             -- non-string keys are fine
 ```
@@ -350,7 +350,7 @@ Maps are ordered collections of key-value pairs, enclosed in `#{...}`.
 | `len` | `( map -- int )` | Number of key-value pairs |
 | `empty` | `( map -- bool )` | Is the map empty? |
 
-```sabo
+```sabot
 let m = #{"a" => 1, "b" => 2}
 m "a" get                        -- 1
 m "c" 0 get_or                   -- 0
@@ -358,15 +358,15 @@ m "c" 3 set                      -- #{"a" => 1, "b" => 2, "c" => 3}
 m keys                           -- {"a", "b"}
 ```
 
-**Implementation note**: Maps are stored as `Vec<(Value, Value)>`, preserving insertion order. Lookups are linear. This is fine for small maps; Sabo is not designed for giant data structures.
+**Implementation note**: Maps are stored as `Vec<(Value, Value)>`, preserving insertion order. Lookups are linear. This is fine for small maps; Sabot is not designed for giant data structures.
 
 ---
 
 ## Word Definitions & Pattern Matching
 
-Words are Sabo's functions. They are defined with `: name ... ;` and must contain at least one pattern-matching arm.
+Words are Sabot's functions. They are defined with `: name ... ;` and must contain at least one pattern-matching arm.
 
-```sabo
+```sabot
 : double
   [n] -> n 2 *
 ;
@@ -378,7 +378,7 @@ This defines a word `double` that:
 
 **Multi-arm definitions** try each arm top-to-bottom until one matches:
 
-```sabo
+```sabot
 : factorial
   [0] -> 1
   [n] -> n n 1 - factorial *
@@ -404,7 +404,7 @@ This defines a word `double` that:
 
 List destructuring uses `{[...]}` syntax:
 
-```sabo
+```sabot
 : sum_list
   {[]} -> 0
   {[h | t]} -> h t sum_list +
@@ -432,7 +432,7 @@ If a match fails, execution jumps to the next arm's label. If all arms fail, the
 
 When the **last expression** in a word arm is a call to the same word (self-recursion), the compiler emits a `TailCall` instead of `Call`. The VM reuses the current call frame instead of pushing a new one, so tail-recursive words run in constant stack space.
 
-```sabo
+```sabot
 -- This runs in O(1) stack space thanks to TCO:
 : count_down
   [0] -> "done"
@@ -458,7 +458,7 @@ When the **last expression** in a word arm is a call to the same word (self-recu
 
 Guards add conditions to pattern arms using `where`:
 
-```sabo
+```sabot
 : classify
   [n] where n > 0 -> "positive"
   [n] where n < 0 -> "negative"
@@ -478,7 +478,7 @@ Guards add conditions to pattern arms using `where`:
 - Boolean combinators: `and`, `or`, `not`
 - Guard expressions can reference bound variables from the pattern
 
-```sabo
+```sabot
 : in_range
   [n] where n >= 0 and n <= 100 -> true
   [_] -> false
@@ -490,7 +490,7 @@ Guards add conditions to pattern arms using `where`:
 ;
 ```
 
-**Note**: Guard expressions are limited to simple comparisons and references to pattern-bound variables or literals. They are **not** arbitrary Sabo expressions — you cannot call words or use stack operations inside guards.
+**Note**: Guard expressions are limited to simple comparisons and references to pattern-bound variables or literals. They are **not** arbitrary Sabot expressions — you cannot call words or use stack operations inside guards.
 
 ---
 
@@ -498,7 +498,7 @@ Guards add conditions to pattern arms using `where`:
 
 `let` creates global variables by evaluating an expression and storing the result:
 
-```sabo
+```sabot
 let x = 42
 let greeting = "hello " "world" +
 let nums = 1 10 range
@@ -506,7 +506,7 @@ let nums = 1 10 range
 
 The body of a `let` is everything up to the next newline (or semicolon). The body is evaluated, and the **top of stack** is bound to the name.
 
-```sabo
+```sabot
 let task_id = [42] spawn    -- spawn returns task_id, stored in task_id
 ```
 
@@ -518,7 +518,7 @@ let task_id = [42] spawn    -- spawn returns task_id, stored in task_id
 
 `let` supports destructuring lists and maps:
 
-```sabo
+```sabot
 -- List positional: bind elements by index
 let {a, b, c} = {10, 20, 30}     -- a=10, b=20, c=30
 
@@ -538,11 +538,11 @@ List destructuring uses `nth` internally, head/tail uses `head`/`tail`, and map 
 
 Strings can embed variable references with `{name}`:
 
-```sabo
-let name = "Sabo"
+```sabot
+let name = "Sabot"
 let version = 4
 "Welcome to {name} v{version}!" println
--- prints: Welcome to Sabo v4!
+-- prints: Welcome to Sabot v4!
 ```
 
 Interpolation works by:
@@ -562,7 +562,7 @@ Interpolation works by:
 
 Quotations are **first-class code blocks** enclosed in `[...]`. When defined inside word bodies, they act as **closures** — they capture enclosing pattern-bound variables.
 
-```sabo
+```sabot
 [2 *]             -- a quotation that doubles
 [dup +]           -- a quotation that doubles differently
 [println]         -- a quotation that prints
@@ -572,7 +572,7 @@ Quotations are **first-class code blocks** enclosed in `[...]`. When defined ins
 
 Execute a quotation on the current stack:
 
-```sabo
+```sabot
 5 [2 *] ~         -- 10
 ```
 
@@ -582,7 +582,7 @@ The `~` operator (or the word `apply`) pops a quotation and runs it.
 
 Combine two quotations into one:
 
-```sabo
+```sabot
 [2 *] [1 +] .     -- [2 * 1 +]
 5 swap ~           -- 11 (5 * 2 + 1)
 ```
@@ -591,7 +591,7 @@ Combine two quotations into one:
 
 When quotations appear inside word definitions, they capture enclosing pattern-bound variables:
 
-```sabo
+```sabot
 : make_adder
   [n] -> [n +]      -- the quotation [n +] captures `n`
 ;
@@ -604,9 +604,9 @@ This works because the compiler emits `LoadLocal` for pattern variables inside q
 
 ### Quotations as Arguments
 
-Quotations are how Sabo does higher-order programming:
+Quotations are how Sabot does higher-order programming:
 
-```sabo
+```sabot
 {1, 2, 3} [2 *] map         -- {2, 4, 6}
 {1, 2, 3} [3 >] filter      -- {}
 {1, 2, 3} 0 [+] fold        -- 6
@@ -616,7 +616,7 @@ Quotations are how Sabo does higher-order programming:
 
 Quotations define the computation for computed cells and watchers:
 
-```sabo
+```sabot
 10 "x" cell
 [x 2 *] "double_x" computed    -- auto-recomputes when x changes
 ```
@@ -625,16 +625,16 @@ Quotations define the computation for computed cells and watchers:
 
 ## Named Stacks
 
-Sabo supports **auxiliary named stacks** for temporary storage, useful when you need to get values "out of the way":
+Sabot supports **auxiliary named stacks** for temporary storage, useful when you need to get values "out of the way":
 
-```sabo
+```sabot
 42 >aux          -- push 42 to the "aux" stack
 aux>             -- pop from "aux" back to main stack
 ```
 
 **Syntax**: `>name` pushes to the named stack, `name>` pops from it. Any alphanumeric name works.
 
-```sabo
+```sabot
 -- Example: swap using a named stack
 1 2 >temp temp> swap  -- equivalent to just 'swap', but demonstrates the concept
 
@@ -647,14 +647,14 @@ acc> acc> acc> acc> acc>   -- 5 4 3 2 1 on stack
 
 ## Conditional Execution
 
-Sabo provides `if_else` and `if_true` for branching with quotations:
+Sabot provides `if_else` and `if_true` for branching with quotations:
 
 | Word | Stack Effect | Description |
 |------|-------------|-------------|
 | `if_else` | `( bool quot quot -- ... )` | If true, run first quotation; otherwise run second |
 | `if_true` | `( bool quot -- ... )` | If true, run the quotation; otherwise do nothing |
 
-```sabo
+```sabot
 true  ["yes" println] ["no" println] if_else   -- prints "yes"
 false ["yes" println] ["no" println] if_else   -- prints "no"
 
@@ -663,7 +663,7 @@ false ["yes" println] ["no" println] if_else   -- prints "no"
 
 These are cleaner than the classic Forth pattern of `swap ~ drop ~` and allow readable nested branching:
 
-```sabo
+```sabot
 : classify
   [n] ->
     n 0 >
@@ -682,11 +682,11 @@ These are cleaner than the classic Forth pattern of `swap ~ drop ~` and allow re
 
 ## Error Handling
 
-Sabo uses `try` for error handling, inspired by Erlang's `{:ok, value}` / `{:error, reason}` convention.
+Sabot uses `try` for error handling, inspired by Erlang's `{:ok, value}` / `{:error, reason}` convention.
 
 ### Try
 
-```sabo
+```sabot
 [1 0 /] try                 -- {:error, Division by zero}
 [42] try                     -- {:ok, 42}
 [unknown_word] try           -- {:error, Unknown word 'unknown_word'}
@@ -712,7 +712,7 @@ Line numbers are tracked through the compilation pipeline (lexer → parser → 
 
 `throw` takes any value from the stack and throws it as an error. When caught by `try`, the thrown value is preserved:
 
-```sabo
+```sabot
 [:not_found throw] try           -- {:error, :not_found}
 [42 throw] try                   -- {:error, 42}
 [#{"code" => 404} throw] try    -- {:error, #{"code" => 404}}
@@ -720,7 +720,7 @@ Line numbers are tracked through the compilation pipeline (lexer → parser → 
 
 `error` is a convenience that builds a typed error tuple and throws it:
 
-```sabo
+```sabot
 -- "message" :type error -> throws {:error, :type, "message"}
 ["file missing" :io_error error] try
 -- {:error, {:error, :io_error, "file missing"}}
@@ -730,7 +730,7 @@ Without `try`, thrown errors propagate like any other runtime error.
 
 ### Pattern Matching on Results
 
-```sabo
+```sabot
 : safe_divide
   [a b] where b == 0 -> {:error, "division by zero"}
   [a b] -> {:ok, a b /}
@@ -745,7 +745,7 @@ Without `try`, thrown errors propagate like any other runtime error.
 
 ## Reactive Cells
 
-Reactive cells bring spreadsheet-like live computation to Sabo. When a cell changes, all dependent computed cells automatically recompute, and edge-triggered watchers fire.
+Reactive cells bring spreadsheet-like live computation to Sabot. When a cell changes, all dependent computed cells automatically recompute, and edge-triggered watchers fire.
 
 ### Cell Operations
 
@@ -759,7 +759,7 @@ Reactive cells bring spreadsheet-like live computation to Sabo. When a cell chan
 
 ### Basic Cells
 
-```sabo
+```sabot
 10 "x" cell          -- create cell "x" with value 10
 20 "y" cell          -- create cell "y" with value 20
 x                    -- pushes 10 (cells are resolved by name)
@@ -773,7 +773,7 @@ x                    -- pushes 10 (cells are resolved by name)
 
 Computed cells are quotations that auto-recompute whenever *any* cell is updated via `set_cell`:
 
-```sabo
+```sabot
 10 "x" cell
 20 "y" cell
 [x y +] "sum" computed      -- initially evaluates to 30
@@ -797,7 +797,7 @@ This means computed cell quotations run in **isolation** — they don't see or a
 
 Watchers fire an action when a condition **becomes** true (edge-triggered, false→true transition):
 
-```sabo
+```sabot
 [sum 50 >] ["ALERT: sum exceeds 50!!" println] when
 ```
 
@@ -805,7 +805,7 @@ Watchers fire an action when a condition **becomes** true (edge-triggered, false
 - The action only fires on **false→true transitions** — not when the condition stays true
 - Like computed cells, watchers save/restore the stack
 
-```sabo
+```sabot
 10 "x" cell
 20 "y" cell
 [x y +] "sum" computed
@@ -824,11 +824,11 @@ Watchers fire an action when a condition **becomes** true (edge-triggered, false
 
 ## Concurrency
 
-Sabo supports lightweight concurrency via spawned tasks and named channels.
+Sabot supports lightweight concurrency via spawned tasks and named channels.
 
 ### Spawn & Await
 
-```sabo
+```sabot
 -- Spawn a task (runs in a new thread with its own VM)
 [42] spawn              -- pushes task_id (an int)
 
@@ -856,7 +856,7 @@ Channels are named, thread-safe FIFO queues for message passing:
 
 Channels are **auto-created** on first `send` — there's no `channel` creation step.
 
-```sabo
+```sabot
 -- Producer/consumer pattern
 [
   "hello" "work" send
@@ -877,7 +877,7 @@ Channels are **auto-created** on first `send` — there's no `channel` creation 
 
 ### Parallel Computation
 
-```sabo
+```sabot
 let t1 = [1 1000000 range 0 [+] fold] spawn
 let t2 = [1 500000 range 0 [+] fold] spawn
 
@@ -887,7 +887,7 @@ t2 await println    -- 124999750000
 
 ### Fan-Out Pattern
 
-```sabo
+```sabot
 [10 20 * "results" send] spawn drop
 [30 40 * "results" send] spawn drop
 [50 60 * "results" send] spawn drop
@@ -903,7 +903,7 @@ t2 await println    -- 124999750000
 
 ### Typed Channels
 
-In addition to named (string-keyed) channels, Sabo has **typed channels** — integer-keyed, first-class channels that can be closed:
+In addition to named (string-keyed) channels, Sabot has **typed channels** — integer-keyed, first-class channels that can be closed:
 
 | Word | Stack Effect | Description |
 |------|-------------|-------------|
@@ -913,7 +913,7 @@ In addition to named (string-keyed) channels, Sabo has **typed channels** — in
 | `ch_try_recv` | `( ch_id -- result )` | Non-blocking: `{:ok, val}`, `:empty`, or `:closed` |
 | `ch_close` | `( ch_id -- )` | Close channel (no more sends allowed) |
 
-```sabo
+```sabot
 channel
 let ch = dup
 
@@ -926,13 +926,13 @@ ch ch_recv       -- :closed
 
 ### Structured Concurrency
 
-Sabo supports structured concurrency with linked tasks, cancellation propagation, and task groups.
+Sabot supports structured concurrency with linked tasks, cancellation propagation, and task groups.
 
 #### spawn_linked
 
 Like `spawn`, but tracked in the current task group. Returns a task ID.
 
-```sabo
+```sabot
 [10 20 +] spawn_linked await    -- 30
 ```
 
@@ -943,7 +943,7 @@ Like `spawn`, but tracked in the current task group. Returns a task ID.
 | `await_all` | `( {ids} -- {results} )` | Wait for all tasks; returns list of `{:ok, val}` or `{:error, msg}` |
 | `await_any` | `( {ids} -- {id, result} )` | Wait for first; cancels rest; returns `{task_id, {:ok, val}}` |
 
-```sabo
+```sabot
 [10] spawn_linked
 let t1 = dup
 [20] spawn_linked
@@ -966,7 +966,7 @@ Cancellation is **cooperative**: tasks must check `cancelled?` or be in a blocki
 
 Runs a quotation with a time limit. Returns `{:ok, result}` on success or `{:error, :timeout}` if time runs out.
 
-```sabo
+```sabot
 [42] 1000 timeout            -- {:ok, 42}
 [500 sleep_ms 42] 10 timeout -- {:error, :timeout}
 ```
@@ -975,7 +975,7 @@ Runs a quotation with a time limit. Returns `{:ok, result}` on success or `{:err
 
 Waits on multiple typed channels, returning the first available message. Returns `{channel_id, value}`. If a channel is closed, returns `{channel_id, :closed}`.
 
-```sabo
+```sabot
 channel
 let ch1 = dup
 channel
@@ -997,7 +997,7 @@ let ch2 = dup
 | `file_exists` | `( path -- bool )` | Does the file exist? |
 | `ls` | `( path -- list )` | List directory entries (sorted) |
 
-```sabo
+```sabot
 "Hello!\nLine 2" "/tmp/test.txt" write_file
 "/tmp/test.txt" read_file println       -- Hello!\nLine 2
 "/tmp/test.txt" read_lines println      -- {Hello!, Line 2}
@@ -1014,7 +1014,7 @@ let ch2 = dup
 | `exec` | `( cmd -- stdout )` | Run shell command, return stdout |
 | `exec_full` | `( cmd -- map )` | Run command, return `#{"stdout" => ..., "stderr" => ..., "code" => ...}` |
 
-```sabo
+```sabot
 "echo hello" exec println              -- hello
 "ls -la" exec_full "code" get println  -- 0
 ```
@@ -1030,7 +1030,7 @@ Commands are executed via `sh -c "<cmd>"`.
 | `http_get` | `( url -- body )` | HTTP GET, returns response body as string |
 | `http_post` | `( body url -- response )` | HTTP POST (Content-Type: application/json) |
 
-```sabo
+```sabot
 "https://httpbin.org/get" http_get json_parse "headers" get println
 "{\"key\": \"value\"}" "https://httpbin.org/post" http_post println
 ```
@@ -1047,11 +1047,11 @@ All text-format serializers use `serde` under the hood. The binary format uses a
 
 | Word | Stack Effect | Description |
 |------|-------------|-------------|
-| `json_parse` | `( string -- value )` | Parse JSON string into Sabo values |
-| `json_encode` | `( value -- string )` | Convert Sabo value to compact JSON string |
-| `json_pretty` | `( value -- string )` | Convert Sabo value to pretty-printed JSON |
+| `json_parse` | `( string -- value )` | Parse JSON string into Sabot values |
+| `json_encode` | `( value -- string )` | Convert Sabot value to compact JSON string |
+| `json_pretty` | `( value -- string )` | Convert Sabot value to pretty-printed JSON |
 
-```sabo
+```sabot
 #{"a" => 1, "b" => {2, 3}} json_encode  -- {"a":1,"b":[2,3]}
 #{"a" => 1} json_pretty                  -- multi-line formatted
 ```
@@ -1060,11 +1060,11 @@ All text-format serializers use `serde` under the hood. The binary format uses a
 
 | Word | Stack Effect | Description |
 |------|-------------|-------------|
-| `yaml_parse` | `( string -- value )` | Parse YAML string into Sabo values |
-| `yaml_encode` | `( value -- string )` | Convert Sabo value to YAML string |
+| `yaml_parse` | `( string -- value )` | Parse YAML string into Sabot values |
+| `yaml_encode` | `( value -- string )` | Convert Sabot value to YAML string |
 
-```sabo
-"name: sabo\nversion: 4" yaml_parse  -- #{"name" => "sabo", "version" => 4}
+```sabot
+"name: sabot\nversion: 4" yaml_parse  -- #{"name" => "sabot", "version" => 4}
 #{"color" => "red"} yaml_encode      -- "color: red\n"
 ```
 
@@ -1072,11 +1072,11 @@ All text-format serializers use `serde` under the hood. The binary format uses a
 
 | Word | Stack Effect | Description |
 |------|-------------|-------------|
-| `toml_parse` | `( string -- value )` | Parse TOML string into Sabo values |
-| `toml_encode` | `( value -- string )` | Convert Sabo value to TOML string |
+| `toml_parse` | `( string -- value )` | Parse TOML string into Sabot values |
+| `toml_encode` | `( value -- string )` | Convert Sabot value to TOML string |
 
-```sabo
-"name = \"sabo\"\nversion = 4" toml_parse  -- #{"name" => "sabo", "version" => 4}
+```sabot
+"name = \"sabot\"\nversion = 4" toml_parse  -- #{"name" => "sabot", "version" => 4}
 #{"key" => "value"} toml_encode            -- "key = \"value\"\n"
 ```
 
@@ -1086,11 +1086,11 @@ Self-describing TLV (type-length-value) binary format. Encodes to/from a list of
 
 | Word | Stack Effect | Description |
 |------|-------------|-------------|
-| `proto_encode` | `( value -- byte-list )` | Encode any Sabo value to binary |
-| `proto_decode` | `( byte-list -- value )` | Decode binary back to Sabo value |
+| `proto_encode` | `( value -- byte-list )` | Encode any Sabot value to binary |
+| `proto_decode` | `( byte-list -- value )` | Decode binary back to Sabot value |
 
-```sabo
-#{"name" => "sabo", "version" => 4} proto_encode proto_decode
+```sabot
+#{"name" => "sabot", "version" => 4} proto_encode proto_decode
 -- roundtrips perfectly
 ```
 
@@ -1098,7 +1098,7 @@ Wire format type tags: `0x00`=null, `0x01`=bool, `0x02`=int(i64), `0x03`=float(f
 
 ### Type mapping (all text formats)
 
-| Format value | Sabo value |
+| Format value | Sabot value |
 |------|------|
 | `"string"` | `Str` |
 | `42` / `3.14` | `Int` / `Float` |
@@ -1126,7 +1126,7 @@ Built-in OpenTelemetry-style observability. All state lives in the VM — no ext
 | `spans_dump` | `( -- list )` | Export all spans as list of maps |
 | `spans_reset` | `( -- )` | Clear all span data |
 
-```sabo
+```sabot
 -- Manual span management
 "db-query" span_start drop
   "sql" "SELECT * FROM users" span_attr
@@ -1155,7 +1155,7 @@ Spans nest automatically — child spans record their parent's ID. Each span inc
 | `metrics_dump` | `( -- map )` | Export all metrics as map of maps |
 | `metrics_reset` | `( -- )` | Clear all metrics |
 
-```sabo
+```sabot
 -- Counters (monotonically increasing)
 "http.requests" counter_inc
 5 "cache.hits" counter_add
@@ -1183,7 +1183,7 @@ Spans nest automatically — child spans record their parent's ID. Each span inc
 | `logs_dump` | `( -- list )` | Export all log entries as list of maps |
 | `logs_reset` | `( -- )` | Clear all log entries |
 
-```sabo
+```sabot
 "Server started on port 8080" log_info
 "Request failed" #{"status" => 500, "path" => "/api"} :error log_with
 :warn log_level  -- suppress debug/info output
@@ -1213,8 +1213,8 @@ Built-in SQLite support via `rusqlite` (bundled). One database connection per VM
 | `db_query` | `( sql -- results )` | Query, returns list of maps |
 | `db_query_params` | `( sql params -- results )` | Query with bound parameters |
 
-**Type mapping (Sabo → SQLite)**:
-| Sabo | SQLite |
+**Type mapping (Sabot → SQLite)**:
+| Sabot | SQLite |
 |------|--------|
 | `Int` | INTEGER |
 | `Float` | REAL |
@@ -1224,7 +1224,7 @@ Built-in SQLite support via `rusqlite` (bundled). One database connection per VM
 
 **Query results** come back as a list of maps, where each map represents a row with column names as keys:
 
-```sabo
+```sabot
 ":memory:" db_open
 
 "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)" db_exec drop
@@ -1251,7 +1251,7 @@ Use `":memory:"` for in-memory databases, or a file path for persistent storage.
 | `time_ms` | `( -- int )` | Current time in milliseconds since Unix epoch |
 | `sleep_ms` | `( int -- )` | Sleep for N milliseconds |
 
-```sabo
+```sabot
 "HOME" env_get println       -- /Users/username
 let start = time_ms
 -- ... do work ...
@@ -1267,32 +1267,32 @@ Modules let you organize code across files and import definitions.
 
 ### Import
 
-```sabo
-"path/to/module.sabo" import
+```sabot
+"path/to/module.sabot" import
 ```
 
 `import`:
-1. Derives the module name from the filename (e.g., `lib/math.sabo` → `math`)
+1. Derives the module name from the filename (e.g., `lib/math.sabot` → `math`)
 2. Compiles the file
 3. Registers all word definitions both **unqualified** (`square`) and **qualified** (`math.square`)
 4. Runs the module's top-level code
 
-```sabo
--- examples/lib/math.sabo
+```sabot
+-- examples/lib/math.sabot
 : square
   [n] -> n n *
 ;
 
--- main.sabo
-"examples/lib/math.sabo" import
+-- main.sabot
+"examples/lib/math.sabot" import
 5 square println         -- 25
 7 math.square println    -- 49
 ```
 
 ### Load (non-module)
 
-```sabo
-"path/to/file.sabo" load
+```sabot
+"path/to/file.sabot" load
 ```
 
 `load` evaluates a file in the **current** VM context, as if the code were inlined. No module prefixing. Useful for configuration files, REPL includes, or hot-reload scenarios.
@@ -1301,7 +1301,7 @@ Modules let you organize code across files and import definitions.
 
 ## Testing
 
-Sabo has built-in assertion words and a `test` runner.
+Sabot has built-in assertion words and a `test` runner.
 
 ### Assertion Words
 
@@ -1311,7 +1311,7 @@ Sabo has built-in assertion words and a `test` runner.
 | `assert_eq` | `( a b -- )` | Fails if `a != b` |
 | `assert_neq` | `( a b -- )` | Fails if `a == b` |
 
-```sabo
+```sabot
 true assert                   -- passes
 2 3 + 5 assert_eq             -- passes
 1 2 assert_neq                -- passes
@@ -1324,15 +1324,15 @@ false assert                  -- ERROR: Assertion failed: got false
 ### Running Tests
 
 ```bash
-sabo test examples/tier4_tests.sabo
+sabot test examples/tier4_tests.sabot
 ```
 
 The `test` command runs the file and reports pass/fail. If any assertion fails, execution stops and the error is printed.
 
-A test file is just a normal Sabo file that uses `assert` / `assert_eq` / `assert_neq`:
+A test file is just a normal Sabot file that uses `assert` / `assert_eq` / `assert_neq`:
 
-```sabo
--- test_math.sabo
+```sabot
+-- test_math.sabot
 
 : double [n] -> n 2 * ;
 
@@ -1362,7 +1362,7 @@ Memoization caches a word's results so repeated calls with the same arguments re
 | `memo` | `( name -- )` | Enable memoization for a word |
 | `memo_clear` | `( name -- )` | Clear the memo cache for a word |
 
-```sabo
+```sabot
 : fib
   [0] -> 0
   [1] -> 1
@@ -1394,7 +1394,7 @@ Memoization caches a word's results so repeated calls with the same arguments re
 | `words` | `( -- list )` | List of all defined word names |
 | `globals` | `( -- list )` | List of all global variable names |
 
-```sabo
+```sabot
 42 type_of println           -- int
 3.14 type println            -- :float
 
@@ -1413,12 +1413,12 @@ outer                         -- {inner, outer}
 
 ## Hot Reload
 
-Sabo supports live code reloading for interactive development.
+Sabot supports live code reloading for interactive development.
 
 ### Watch & Poll
 
-```sabo
-"my_module.sabo" watch       -- loads file and starts watching for changes
+```sabot
+"my_module.sabot" watch       -- loads file and starts watching for changes
 -- ... later ...
 poll_watch                    -- reloads if file changed since last check
 ```
@@ -1438,7 +1438,7 @@ This is designed for the REPL workflow: you edit a file in your editor, then cal
 
 ## HTTP Server
 
-Sabo includes a built-in HTTP/1.1 server. No external dependencies — raw TCP, hand-rolled request parsing, threaded request handling.
+Sabot includes a built-in HTTP/1.1 server. No external dependencies — raw TCP, hand-rolled request parsing, threaded request handling.
 
 ### Server Builtins
 
@@ -1452,7 +1452,7 @@ Sabo includes a built-in HTTP/1.1 server. No external dependencies — raw TCP, 
 
 Routes map HTTP method + URL pattern to a handler. The handler is a quotation (or word reference) that receives a **request map** on the stack and must leave a **response map**:
 
-```sabo
+```sabot
 -- Handler as a named word
 : handle_hello
   [req] -> #{"status" => 200, "body" => "Hello!"}
@@ -1469,7 +1469,7 @@ Routes map HTTP method + URL pattern to a handler. The handler is a quotation (o
 
 URL patterns support `:name` segments for path parameters:
 
-```sabo
+```sabot
 : handle_greet
   [req] ->
     req "params" get "name" get
@@ -1510,7 +1510,7 @@ If the handler returns a plain string instead of a map, it's treated as a 200 re
 
 Serve files from a directory with automatic MIME type detection:
 
-```sabo
+```sabot
 "./public" "/static" static_dir
 -- GET /static/style.css -> serves ./public/style.css with Content-Type: text/css
 -- GET /static/ -> serves ./public/index.html (if it exists)
@@ -1533,7 +1533,7 @@ All requests are logged to stdout with method, path, status, and timing:
 
 ### Complete Example
 
-```sabo
+```sabot
 -- Response helper
 : json_ok
   [data] ->
@@ -1700,7 +1700,7 @@ After each evaluation, the REPL displays the stack (if non-empty) in `<val1 val2
 ### Pipeline
 
 ```
-Source Code (.sabo)
+Source Code (.sabot)
     ↓
 Lexer (src/lexer.rs)
     → Vec<Spanned<Token>>
@@ -1776,7 +1776,7 @@ First match wins. This means a builtin cannot be shadowed by a word, but a word 
 
 ### Pattern Match Compilation Example
 
-```sabo
+```sabot
 : factorial
   [0] -> 1
   [n] -> n n 1 - factorial *

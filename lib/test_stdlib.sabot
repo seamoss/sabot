@@ -2,7 +2,7 @@
 -- Run with: sabo test lib/test_stdlib.sabo
 
 -- ===== Math =====
-"lib/math.sabo" import
+"lib/math.sabot" import
 
 5 square 25 assert_eq
 3 cube 27 assert_eq
@@ -50,7 +50,7 @@
 "Math tests passed!" println
 
 -- ===== List =====
-"lib/list.sabo" import
+"lib/list.sabot" import
 
 {1, 2, 3, 4, 5} 3 take {1, 2, 3} assert_eq
 {1, 2, 3, 4, 5} 2 drop_n {3, 4, 5} assert_eq
@@ -79,7 +79,7 @@
 "List tests passed!" println
 
 -- ===== String =====
-"lib/string.sabo" import
+"lib/string.sabot" import
 
 "ab" 3 str_repeat "ababab" assert_eq
 "ab" 0 str_repeat "" assert_eq
@@ -104,7 +104,7 @@
 "String tests passed!" println
 
 -- ===== Functional =====
-"lib/functional.sabo" import
+"lib/functional.sabot" import
 
 5 identity 5 assert_eq
 5 10 const 5 assert_eq
@@ -117,7 +117,7 @@
 "Functional tests passed!" println
 
 -- ===== Map =====
-"lib/map.sabo" import
+"lib/map.sabot" import
 
 #{} empty_map? true assert_eq
 #{"a" => 1} empty_map? false assert_eq

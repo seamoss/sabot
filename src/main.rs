@@ -32,11 +32,11 @@ fn run_source(source: &str, vm: &mut VM, compiler: &mut Compiler) -> Result<(), 
 }
 
 fn load_rc(vm: &mut VM, compiler: &mut Compiler) {
-    // Try .saborc in current directory, then home directory
+    // Try .sabotrc in current directory, then home directory
     let candidates = vec![
-        ".saborc".to_string(),
+        ".sabotrc".to_string(),
         dirs_next()
-            .map(|h| format!("{}/.saborc", h))
+            .map(|h| format!("{}/.sabotrc", h))
             .unwrap_or_default(),
     ];
 
@@ -59,7 +59,7 @@ fn dirs_next() -> Option<String> {
 }
 
 fn repl() {
-    println!("Sabo v0.4.0 -- stack-based pattern matching language");
+    println!("Sabot v0.4.1 -- stack-based pattern matching language");
     println!("Type .help for commands, 'quit' to exit\n");
 
     let mut vm = VM::new();
@@ -74,7 +74,7 @@ fn repl() {
 
     loop {
         if buffer.is_empty() {
-            print!("sabo> ");
+            print!("sabot> ");
         } else {
             print!("  ... ");
         }
@@ -230,7 +230,7 @@ fn run_tests(path: &str) {
             .filter_map(|e| e.ok())
             .map(|e| e.file_name().to_string_lossy().to_string())
             .filter(|name| {
-                name.ends_with(".sabo") && (name.contains("test_") || name.contains("_test"))
+                name.ends_with(".sabot") && (name.contains("test_") || name.contains("_test"))
             })
             .collect();
         entries.sort();
@@ -309,7 +309,7 @@ fn format_files(args: &[String]) {
         .collect();
 
     if files.is_empty() {
-        eprintln!("Usage: sabo fmt [-w] <file.sabo> [file2.sabo ...]");
+        eprintln!("Usage: sabot fmt [-w] <file.sabot> [file2.sabot ...]");
         eprintln!("  -w, --write   Write formatted output back to file");
         std::process::exit(1);
     }
@@ -351,7 +351,7 @@ fn main() {
         _ if args.len() >= 2 && args[1] == "fmt" => format_files(&args[2..]),
         _ if args.len() >= 2 && args[1] == "profile" => {
             if args.len() < 3 {
-                eprintln!("Usage: sabo profile <file.sabo>");
+                eprintln!("Usage: sabot profile <file.sabot>");
                 std::process::exit(1);
             }
             profile_file(&args[2]);
@@ -360,10 +360,10 @@ fn main() {
             run_file(&args[1])
         }
         _ => {
-            eprintln!("Usage: sabo [file.sabo] [args...]");
-            eprintln!("       sabo test <test_file_or_dir>");
-            eprintln!("       sabo fmt [-w] <file.sabo> [...]");
-            eprintln!("       sabo profile <file.sabo>");
+            eprintln!("Usage: sabot [file.sabot] [args...]");
+            eprintln!("       sabot test <test_file_or_dir>");
+            eprintln!("       sabot fmt [-w] <file.sabot> [...]");
+            eprintln!("       sabot profile <file.sabot>");
             std::process::exit(1);
         }
     }

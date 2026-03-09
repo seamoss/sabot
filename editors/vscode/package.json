@@ -1,9 +1,9 @@
 {
-  "name": "sabo-lang",
-  "displayName": "Sabo Language",
-  "description": "Syntax highlighting for the Sabo programming language",
+  "name": "sabot-lang",
+  "displayName": "Sabot Language",
+  "description": "Syntax highlighting for the Sabot programming language",
   "version": "0.1.0",
-  "publisher": "sabo-lang",
+  "publisher": "sabot-lang",
   "engines": {
     "vscode": "^1.75.0"
   },
@@ -11,17 +11,17 @@
   "contributes": {
     "languages": [
       {
-        "id": "sabo",
-        "aliases": ["Sabo", "sabo"],
-        "extensions": [".sabo"],
+        "id": "sabot",
+        "aliases": ["Sabot", "sabot"],
+        "extensions": [".sabot"],
         "configuration": "./language-configuration.json"
       }
     ],
     "grammars": [
       {
-        "language": "sabo",
-        "scopeName": "source.sabo",
-        "path": "./syntaxes/sabo.tmLanguage.json"
+        "language": "sabot",
+        "scopeName": "source.sabot",
+        "path": "./syntaxes/sabot.tmLanguage.json"
       }
     ]
   }
