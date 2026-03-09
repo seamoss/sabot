@@ -141,7 +141,9 @@ fn sabot_to_yaml(val: &Value) -> serde_yaml::Value {
         Value::Symbol(s) if s == "null" => serde_yaml::Value::Null,
         Value::Symbol(s) => serde_yaml::Value::String(s.clone()),
         Value::Bool(b) => serde_yaml::Value::Bool(*b),
-        Value::List(items) => serde_yaml::Value::Sequence(items.iter().map(sabot_to_yaml).collect()),
+        Value::List(items) => {
+            serde_yaml::Value::Sequence(items.iter().map(sabot_to_yaml).collect())
+        }
         Value::Map(map) => {
             let m: serde_yaml::Mapping = map
                 .iter()
