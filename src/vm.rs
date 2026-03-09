@@ -1,5 +1,5 @@
 use crate::builtins_otel::OtelState;
-use crate::builtins_ws::{WsConn, WsRoute};
+use crate::builtins_ws::WsRoute;
 use crate::opcode::Op;
 use crate::profiler::Profiler;
 use crate::value::Value;
@@ -122,7 +122,7 @@ pub struct VM {
     task_group_stack: Vec<Vec<u64>>, // stack of task groups (each is a list of task IDs)
 
     // WebSocket
-    pub ws_connections: Arc<Mutex<HashMap<u64, Arc<Mutex<WsConn>>>>>,
+    pub ws_connections: crate::builtins_ws::WsConnMap,
     pub next_ws_id: Arc<Mutex<u64>>,
     pub ws_routes: Arc<Mutex<Vec<WsRoute>>>,
 

@@ -26,13 +26,16 @@ pub struct WsRoute {
     pub handler: Vec<Op>, // handler quotation ops
 }
 
+/// Shared connection registry type alias (avoids clippy::type_complexity).
+pub type WsConnMap = Arc<Mutex<HashMap<u64, Arc<Mutex<WsConn>>>>>;
+
 // ============================================================
 // SHA-1 (RFC 3174) — inline, no dependencies
 // ============================================================
 
 fn sha1(data: &[u8]) -> [u8; 20] {
     fn left_rotate(value: u32, count: u32) -> u32 {
-        (value << count) | (value >> (32 - count))
+        value.rotate_left(count)
     }
 
     let mut h0: u32 = 0x67452301;
@@ -68,6 +71,7 @@ fn sha1(data: &[u8]) -> [u8; 20] {
 
         let (mut a, mut b, mut c, mut d, mut e) = (h0, h1, h2, h3, h4);
 
+        #[allow(clippy::needless_range_loop)]
         for i in 0..80 {
             let (f, k) = match i {
                 0..=19 => ((b & c) | ((!b) & d), 0x5A827999u32),
@@ -408,10 +412,7 @@ fn parse_ws_url(url: &str) -> Result<WsUrl, String> {
 // Connection registry helpers
 // ============================================================
 
-fn get_conn(
-    conns: &Arc<Mutex<HashMap<u64, Arc<Mutex<WsConn>>>>>,
-    id: u64,
-) -> Result<Arc<Mutex<WsConn>>, String> {
+fn get_conn(conns: &WsConnMap, id: u64) -> Result<Arc<Mutex<WsConn>>, String> {
     let map = conns
         .lock()
         .map_err(|_| "ws connection registry lock poisoned".to_string())?;
@@ -429,11 +430,7 @@ fn alloc_id(next_id: &Arc<Mutex<u64>>) -> Result<u64, String> {
     Ok(current)
 }
 
-fn register_conn(
-    conns: &Arc<Mutex<HashMap<u64, Arc<Mutex<WsConn>>>>>,
-    id: u64,
-    conn: WsConn,
-) -> Result<(), String> {
+fn register_conn(conns: &WsConnMap, id: u64, conn: WsConn) -> Result<(), String> {
     let mut map = conns
         .lock()
         .map_err(|_| "ws connection registry lock poisoned".to_string())?;
@@ -441,10 +438,7 @@ fn register_conn(
     Ok(())
 }
 
-fn remove_conn(
-    conns: &Arc<Mutex<HashMap<u64, Arc<Mutex<WsConn>>>>>,
-    id: u64,
-) -> Result<(), String> {
+fn remove_conn(conns: &WsConnMap, id: u64) -> Result<(), String> {
     let mut map = conns
         .lock()
         .map_err(|_| "ws connection registry lock poisoned".to_string())?;
@@ -677,11 +671,11 @@ fn ws_close(vm: &mut VM) -> Result<(), String> {
 
     // Send close frame
     let conn_arc = get_conn(&vm.ws_connections, id);
-    if let Ok(arc) = conn_arc {
-        if let Ok(mut conn) = arc.lock() {
-            let mask = conn.is_client;
-            let _ = write_frame(&mut conn.stream, &WsOpcode::Close, &[], mask);
-        }
+    if let Ok(arc) = conn_arc
+        && let Ok(mut conn) = arc.lock()
+    {
+        let mask = conn.is_client;
+        let _ = write_frame(&mut conn.stream, &WsOpcode::Close, &[], mask);
     }
 
     remove_conn(&vm.ws_connections, id)?;
@@ -788,7 +782,7 @@ pub fn check_ws_upgrade(headers: &HashMap<String, String>) -> Option<String> {
 pub fn ws_upgrade(
     mut stream: TcpStream,
     key: &str,
-    ws_conns: &Arc<Mutex<HashMap<u64, Arc<Mutex<WsConn>>>>>,
+    ws_conns: &WsConnMap,
     next_id: &Arc<Mutex<u64>>,
 ) -> Result<u64, String> {
     let accept = ws_accept_key(key);
