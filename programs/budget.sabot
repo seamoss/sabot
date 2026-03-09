@@ -1,7 +1,7 @@
 -- =============================================
 --  B U D G E T   T R A C K E R
 --  Interactive budget tool using reactive cells
---  Usage: sabo programs/budget.sabo
+--  Usage: sabot programs/budget.sabo
 -- =============================================
 
 -- === REACTIVE STATE ===

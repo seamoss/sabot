@@ -1,5 +1,5 @@
-# Sabo source files
-*.sabo text eol=lf diff=sabo linguist-language=Sabo
+# Sabot source files
+*.sabot text eol=lf diff=sabot linguist-language=Sabot
 
 # Rust source
 *.rs text eol=lf diff=rust

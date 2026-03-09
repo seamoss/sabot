@@ -1,0 +1,73 @@
+-- Test async features: poll and coroutines
+
+-- ============================================================
+-- poll (non-blocking task check)
+-- ============================================================
+
+: return_42 [] -> 42 ;
+let task = [return_42] spawn
+10 sleep_ms
+
+-- Poll should return {:done, 42}
+task poll
+let poll_result = dup
+poll_result head :done assert_eq
+drop
+
+-- Poll a non-existent task should be :pending or :done
+"Poll tests passed!" println
+
+-- ============================================================
+-- Coroutines: simple generator
+-- ============================================================
+
+let gen = [1 yield drop 2 yield drop 3 yield drop 4] coroutine
+
+:go gen resume 1 assert_eq
+:go gen resume 2 assert_eq
+:go gen resume 3 assert_eq
+
+gen coro_done? false assert_eq
+
+:go gen resume 4 assert_eq
+gen coro_done? true assert_eq
+
+"Coroutine generator tests passed!" println
+
+-- ============================================================
+-- Coroutines: resume values flow into coroutine
+-- ============================================================
+
+-- Coroutine that receives values via resume and doubles them
+let doubler = [
+  "ready" yield  -- yield "ready", get first value
+  2 * yield      -- double it, yield result, get next value
+  2 * yield      -- double again, yield result
+  drop :finished -- final return
+] coroutine
+
+-- Start it: send :go, get "ready"
+:go doubler resume
+"ready" assert_eq
+
+-- Send 5, get back 10
+5 doubler resume
+10 assert_eq
+
+-- Send 7, get back 14
+7 doubler resume
+14 assert_eq
+
+-- Final resume, coroutine returns :finished
+:go doubler resume
+:finished assert_eq
+
+doubler coro_done? true assert_eq
+
+"Coroutine resume value tests passed!" println
+
+-- ============================================================
+-- All passed
+-- ============================================================
+
+"All async tests passed!" println

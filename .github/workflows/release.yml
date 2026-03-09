@@ -56,13 +56,13 @@ jobs:
         if: matrix.cross
         run: cross build --release --target ${{ matrix.target }}
 
-      - name: Run Sabo test suite (Unix, native only)
+      - name: Run Sabot test suite (Unix, native only)
         if: runner.os != 'Windows' && !matrix.cross
-        run: ./target/${{ matrix.target }}/release/sabo test lib/
+        run: ./target/${{ matrix.target }}/release/sabot test lib/
 
-      - name: Run Sabo test suite (Windows)
+      - name: Run Sabot test suite (Windows)
         if: runner.os == 'Windows'
-        run: .\target\${{ matrix.target }}\release\sabo.exe test lib/
+        run: .\target\${{ matrix.target }}\release\sabot.exe test lib/
 
       - name: Get version from tag
         id: version
@@ -73,9 +73,9 @@ jobs:
         if: matrix.archive == 'tar.gz'
         shell: bash
         run: |
-          STAGING="sabo-${{ steps.version.outputs.version }}-${{ matrix.target }}"
+          STAGING="sabot-${{ steps.version.outputs.version }}-${{ matrix.target }}"
           mkdir -p "$STAGING"
-          cp target/${{ matrix.target }}/release/sabo "$STAGING/"
+          cp target/${{ matrix.target }}/release/sabot "$STAGING/"
           cp README.md LICENSE CHANGELOG.md "$STAGING/" 2>/dev/null || true
           cp -r lib "$STAGING/lib"
           cp -r docs "$STAGING/docs"
@@ -86,9 +86,9 @@ jobs:
         if: matrix.archive == 'zip'
         shell: bash
         run: |
-          STAGING="sabo-${{ steps.version.outputs.version }}-${{ matrix.target }}"
+          STAGING="sabot-${{ steps.version.outputs.version }}-${{ matrix.target }}"
           mkdir -p "$STAGING"
-          cp target/${{ matrix.target }}/release/sabo.exe "$STAGING/"
+          cp target/${{ matrix.target }}/release/sabot.exe "$STAGING/"
           cp README.md LICENSE CHANGELOG.md "$STAGING/" 2>/dev/null || true
           cp -r lib "$STAGING/lib"
           cp -r docs "$STAGING/docs"
@@ -98,7 +98,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: sabo-${{ matrix.target }}
+          name: sabot-${{ matrix.target }}
           path: ${{ env.ASSET }}
 
   release:

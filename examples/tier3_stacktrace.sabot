@@ -30,4 +30,4 @@ outer
 -- 4. Hot reload: load another file
 "" println
 "-- Hot reload (load) --" println
-"examples/hello.sabo" load
+"examples/hello.sabot" load

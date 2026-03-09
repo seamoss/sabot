@@ -4,6 +4,7 @@ mod builtins_http;
 mod builtins_io;
 mod builtins_otel;
 mod builtins_serial;
+mod builtins_ws;
 mod compiler;
 mod formatter;
 mod lexer;
@@ -17,8 +18,14 @@ mod vm;
 use compiler::Compiler;
 use lexer::Lexer;
 use parser::Parser;
-use std::io::{self, BufRead, Write};
 use vm::VM;
+
+use rustyline::completion::{Completer, Pair};
+use rustyline::error::ReadlineError;
+use rustyline::highlight::Highlighter;
+use rustyline::hint::Hinter;
+use rustyline::validate::Validator;
+use rustyline::{Context, Editor, Helper};
 
 fn run_source(source: &str, vm: &mut VM, compiler: &mut Compiler) -> Result<(), String> {
     let mut lex = Lexer::new(source);
@@ -32,11 +39,11 @@ fn run_source(source: &str, vm: &mut VM, compiler: &mut Compiler) -> Result<(), 
 }
 
 fn load_rc(vm: &mut VM, compiler: &mut Compiler) {
-    // Try .saborc in current directory, then home directory
+    // Try .sabotrc in current directory, then home directory
     let candidates = vec![
-        ".saborc".to_string(),
+        ".sabotrc".to_string(),
         dirs_next()
-            .map(|h| format!("{}/.saborc", h))
+            .map(|h| format!("{}/.sabotrc", h))
             .unwrap_or_default(),
     ];
 
@@ -58,118 +65,247 @@ fn dirs_next() -> Option<String> {
     std::env::var("HOME").ok()
 }
 
+/// Tab-completion helper for the REPL
+struct SabotHelper {
+    /// All completable words (builtins + user words + dot-commands)
+    completions: Vec<String>,
+}
+
+impl SabotHelper {
+    fn new() -> Self {
+        SabotHelper {
+            completions: Vec::new(),
+        }
+    }
+
+    fn update_completions(&mut self, vm: &VM) {
+        let mut names: Vec<String> = vm.all_names();
+        // Add dot-commands
+        for cmd in &[
+            ".help", ".stack", ".words", ".globals", ".cells", ".clear", ".reset",
+        ] {
+            names.push(cmd.to_string());
+        }
+        names.push("quit".to_string());
+        names.push("exit".to_string());
+        names.sort();
+        names.dedup();
+        self.completions = names;
+    }
+}
+
+impl Completer for SabotHelper {
+    type Candidate = Pair;
+
+    fn complete(
+        &self,
+        line: &str,
+        pos: usize,
+        _ctx: &Context<'_>,
+    ) -> rustyline::Result<(usize, Vec<Pair>)> {
+        // Find the word being typed
+        let before = &line[..pos];
+        let start = before
+            .rfind(|c: char| c.is_whitespace())
+            .map(|i| i + 1)
+            .unwrap_or(0);
+        let prefix = &before[start..];
+
+        if prefix.is_empty() {
+            return Ok((start, Vec::new()));
+        }
+
+        let matches: Vec<Pair> = self
+            .completions
+            .iter()
+            .filter(|name| name.starts_with(prefix))
+            .map(|name| Pair {
+                display: name.clone(),
+                replacement: name.clone(),
+            })
+            .collect();
+
+        Ok((start, matches))
+    }
+}
+
+impl Hinter for SabotHelper {
+    type Hint = String;
+}
+
+impl Highlighter for SabotHelper {}
+
+impl Validator for SabotHelper {}
+
+impl Helper for SabotHelper {}
+
 fn repl() {
-    println!("Sabo v0.4.0 -- stack-based pattern matching language");
-    println!("Type .help for commands, 'quit' to exit\n");
+    println!(
+        r#"
+  ╭──────────────────────────────────────────────╮
+  │                                              │
+  │   ███████  █████  ██████   ██████ ████████   │
+  │   ██      ██   ██ ██   ██ ██    ██   ██      │
+  │   ███████ ███████ ██████  ██    ██   ██      │
+  │        ██ ██   ██ ██   ██ ██    ██   ██      │
+  │   ███████ ██   ██ ██████   ██████    ██      │
+  │                                              │
+  │    ╶─╴ stack-based pattern matching ╶─╴      │
+  │        forth meets erlang · v0.5.0           │
+  │                                              │
+  │    .help for commands · quit to exit         │
+  ╰──────────────────────────────────────────────╯
+"#
+    );
 
     let mut vm = VM::new();
     let mut compiler = Compiler::new();
 
     load_rc(&mut vm, &mut compiler);
 
-    let stdin = io::stdin();
-    let mut stdout = io::stdout();
+    let mut helper = SabotHelper::new();
+    helper.update_completions(&vm);
+
+    let mut rl = Editor::new().expect("Failed to create readline editor");
+    rl.set_helper(Some(helper));
+
+    // Load history
+    let history_path = dirs_next()
+        .map(|h| format!("{}/.sabot_history", h))
+        .unwrap_or_default();
+    if !history_path.is_empty() {
+        let _ = rl.load_history(&history_path);
+    }
 
     let mut buffer = String::new();
 
     loop {
-        if buffer.is_empty() {
-            print!("sabo> ");
+        let prompt = if buffer.is_empty() {
+            "sabot> "
         } else {
-            print!("  ... ");
-        }
-        stdout.flush().unwrap();
+            "  ... "
+        };
 
-        let mut line = String::new();
-        match stdin.lock().read_line(&mut line) {
-            Ok(0) => break,
-            Ok(_) => {}
-            Err(e) => {
-                eprintln!("Read error: {}", e);
-                break;
+        let readline = rl.readline(prompt);
+        match readline {
+            Ok(line) => {
+                let trimmed = line.trim();
+                if buffer.is_empty() {
+                    if trimmed.is_empty() {
+                        continue;
+                    }
+                    if trimmed == "quit" || trimmed == "exit" {
+                        break;
+                    }
+
+                    // REPL dot-commands
+                    match trimmed {
+                        ".help" => {
+                            rl.add_history_entry(&line).ok();
+                            println!("  .stack    - show the current stack");
+                            println!("  .words    - list defined words");
+                            println!("  .globals  - list global variables");
+                            println!("  .cells    - list reactive cells");
+                            println!("  .clear    - clear the stack");
+                            println!("  .reset    - reset the VM");
+                            println!("  quit      - exit the REPL");
+                            continue;
+                        }
+                        ".stack" | "stack" => {
+                            rl.add_history_entry(&line).ok();
+                            println!("  {}", vm.stack_display());
+                            continue;
+                        }
+                        ".words" => {
+                            rl.add_history_entry(&line).ok();
+                            println!("  {}", vm.words_display());
+                            continue;
+                        }
+                        ".globals" => {
+                            rl.add_history_entry(&line).ok();
+                            println!("  {}", vm.globals_display());
+                            continue;
+                        }
+                        ".cells" => {
+                            rl.add_history_entry(&line).ok();
+                            println!("  {}", vm.cells_display());
+                            continue;
+                        }
+                        ".clear" => {
+                            rl.add_history_entry(&line).ok();
+                            vm.clear_stack();
+                            println!("  stack cleared");
+                            continue;
+                        }
+                        ".reset" => {
+                            rl.add_history_entry(&line).ok();
+                            vm = VM::new();
+                            compiler = Compiler::new();
+                            println!("  VM reset");
+                            if let Some(ref mut h) = rl.helper_mut() {
+                                h.update_completions(&vm);
+                            }
+                            continue;
+                        }
+                        _ => {}
+                    }
+                }
+
+                if buffer.is_empty() {
+                    buffer = format!("{}\n", line);
+                } else {
+                    buffer.push_str(&line);
+                    buffer.push('\n');
+                }
+
+                // Check if input is complete
+                if lexer::is_incomplete(&buffer) {
+                    continue;
+                }
+
+                let source = std::mem::take(&mut buffer);
+                let source = source.trim();
+                if source.is_empty() {
+                    continue;
+                }
+
+                rl.add_history_entry(source).ok();
+
+                match run_source(source, &mut vm, &mut compiler) {
+                    Ok(()) => {
+                        let display = vm.stack_display();
+                        if !display.is_empty() {
+                            println!("  {}", display);
+                        }
+                        // Update completions after new words may have been defined
+                        if let Some(ref mut h) = rl.helper_mut() {
+                            h.update_completions(&vm);
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("  error: {}", e);
+                    }
+                }
             }
-        }
-
-        let trimmed = line.trim();
-        if buffer.is_empty() {
-            if trimmed.is_empty() {
+            Err(ReadlineError::Interrupted) => {
+                // Ctrl-C: clear current buffer
+                buffer.clear();
                 continue;
             }
-            if trimmed == "quit" || trimmed == "exit" {
+            Err(ReadlineError::Eof) => {
+                // Ctrl-D: exit
                 break;
             }
-
-            // REPL dot-commands
-            match trimmed {
-                ".help" => {
-                    println!("  .stack    - show the current stack");
-                    println!("  .words    - list defined words");
-                    println!("  .globals  - list global variables");
-                    println!("  .cells    - list reactive cells");
-                    println!("  .clear    - clear the stack");
-                    println!("  .reset    - reset the VM");
-                    println!("  quit      - exit the REPL");
-                    continue;
-                }
-                ".stack" | "stack" => {
-                    println!("  {}", vm.stack_display());
-                    continue;
-                }
-                ".words" => {
-                    println!("  {}", vm.words_display());
-                    continue;
-                }
-                ".globals" => {
-                    println!("  {}", vm.globals_display());
-                    continue;
-                }
-                ".cells" => {
-                    println!("  {}", vm.cells_display());
-                    continue;
-                }
-                ".clear" => {
-                    vm.clear_stack();
-                    println!("  stack cleared");
-                    continue;
-                }
-                ".reset" => {
-                    vm = VM::new();
-                    compiler = Compiler::new();
-                    println!("  VM reset");
-                    continue;
-                }
-                _ => {}
+            Err(err) => {
+                eprintln!("Read error: {}", err);
+                break;
             }
         }
+    }
 
-        if buffer.is_empty() {
-            buffer = line.to_string();
-        } else {
-            buffer.push_str(&line);
-        }
-
-        // Check if input is complete
-        if lexer::is_incomplete(&buffer) {
-            continue;
-        }
-
-        let source = std::mem::take(&mut buffer);
-        let source = source.trim();
-        if source.is_empty() {
-            continue;
-        }
-
-        match run_source(source, &mut vm, &mut compiler) {
-            Ok(()) => {
-                let display = vm.stack_display();
-                if !display.is_empty() {
-                    println!("  {}", display);
-                }
-            }
-            Err(e) => {
-                eprintln!("  error: {}", e);
-            }
-        }
+    // Save history
+    if !history_path.is_empty() {
+        let _ = rl.save_history(&history_path);
     }
 }
 
@@ -230,7 +366,7 @@ fn run_tests(path: &str) {
             .filter_map(|e| e.ok())
             .map(|e| e.file_name().to_string_lossy().to_string())
             .filter(|name| {
-                name.ends_with(".sabo") && (name.contains("test_") || name.contains("_test"))
+                name.ends_with(".sabot") && (name.contains("test_") || name.contains("_test"))
             })
             .collect();
         entries.sort();
@@ -309,7 +445,7 @@ fn format_files(args: &[String]) {
         .collect();
 
     if files.is_empty() {
-        eprintln!("Usage: sabo fmt [-w] <file.sabo> [file2.sabo ...]");
+        eprintln!("Usage: sabot fmt [-w] <file.sabot> [file2.sabot ...]");
         eprintln!("  -w, --write   Write formatted output back to file");
         std::process::exit(1);
     }
@@ -351,7 +487,7 @@ fn main() {
         _ if args.len() >= 2 && args[1] == "fmt" => format_files(&args[2..]),
         _ if args.len() >= 2 && args[1] == "profile" => {
             if args.len() < 3 {
-                eprintln!("Usage: sabo profile <file.sabo>");
+                eprintln!("Usage: sabot profile <file.sabot>");
                 std::process::exit(1);
             }
             profile_file(&args[2]);
@@ -360,10 +496,10 @@ fn main() {
             run_file(&args[1])
         }
         _ => {
-            eprintln!("Usage: sabo [file.sabo] [args...]");
-            eprintln!("       sabo test <test_file_or_dir>");
-            eprintln!("       sabo fmt [-w] <file.sabo> [...]");
-            eprintln!("       sabo profile <file.sabo>");
+            eprintln!("Usage: sabot [file.sabot] [args...]");
+            eprintln!("       sabot test <test_file_or_dir>");
+            eprintln!("       sabot fmt [-w] <file.sabot> [...]");
+            eprintln!("       sabot profile <file.sabot>");
             std::process::exit(1);
         }
     }

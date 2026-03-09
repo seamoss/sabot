@@ -41,13 +41,13 @@ jobs:
       - name: Run Rust tests
         run: cargo test
 
-      - name: Run Sabo test suite (Unix)
+      - name: Run Sabot test suite (Unix)
         if: runner.os != 'Windows'
-        run: ./target/release/sabo test lib/
+        run: ./target/release/sabot test lib/
 
-      - name: Run Sabo test suite (Windows)
+      - name: Run Sabot test suite (Windows)
         if: runner.os == 'Windows'
-        run: .\target\release\sabo.exe test lib/
+        run: .\target\release\sabot.exe test lib/
 
   fmt-check:
     name: Rustfmt

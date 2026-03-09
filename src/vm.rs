@@ -1,4 +1,5 @@
 use crate::builtins_otel::OtelState;
+use crate::builtins_ws::WsRoute;
 use crate::opcode::Op;
 use crate::profiler::Profiler;
 use crate::value::Value;
@@ -65,6 +66,22 @@ struct Watcher {
 type BuiltinFn = fn(&mut VM) -> Result<(), String>;
 type TaskResults = Arc<Mutex<HashMap<u64, Option<Result<Value, String>>>>>;
 
+/// A coroutine: a paused computation that can yield and resume.
+/// Uses a thread + two channels for cooperative scheduling.
+struct Coroutine {
+    /// Send a resume value to the coroutine thread
+    resume_tx: std::sync::mpsc::Sender<Value>,
+    /// Receive yielded values (or completion) from the coroutine thread
+    yield_rx: std::sync::mpsc::Receiver<CoroutineMsg>,
+    /// Whether the coroutine has finished
+    done: bool,
+}
+
+enum CoroutineMsg {
+    Yielded(Value),
+    Done(Result<Value, String>),
+}
+
 pub struct VM {
     stack: Vec<Value>,
     named_stacks: HashMap<String, Vec<Value>>,
@@ -104,6 +121,18 @@ pub struct VM {
     cancel_token: Arc<AtomicBool>,   // this VM's own cancellation token
     task_group_stack: Vec<Vec<u64>>, // stack of task groups (each is a list of task IDs)
 
+    // WebSocket
+    pub ws_connections: crate::builtins_ws::WsConnMap,
+    pub next_ws_id: Arc<Mutex<u64>>,
+    pub ws_routes: Arc<Mutex<Vec<WsRoute>>>,
+
+    // Coroutines
+    coroutines: HashMap<u64, Coroutine>,
+    next_coro_id: u64,
+    /// When this VM is running inside a coroutine, these are set
+    coro_yield_tx: Option<std::sync::mpsc::Sender<CoroutineMsg>>,
+    coro_resume_rx: Option<Arc<Mutex<std::sync::mpsc::Receiver<Value>>>>,
+
     // Profiling (None = disabled)
     pub profiler: Option<Profiler>,
 
@@ -141,6 +170,13 @@ impl VM {
             task_registry: Arc::new(Mutex::new(HashMap::new())),
             cancel_token: Arc::new(AtomicBool::new(false)),
             task_group_stack: Vec::new(),
+            ws_connections: Arc::new(Mutex::new(HashMap::new())),
+            next_ws_id: Arc::new(Mutex::new(0)),
+            ws_routes: Arc::new(Mutex::new(Vec::new())),
+            coroutines: HashMap::new(),
+            next_coro_id: 0,
+            coro_yield_tx: None,
+            coro_resume_rx: None,
             profiler: None,
             otel: OtelState::new(),
         };
@@ -153,6 +189,7 @@ impl VM {
         vm.register_concurrency_builtins();
         crate::builtins_serial::register(&mut vm);
         crate::builtins_otel::register(&mut vm);
+        crate::builtins_ws::register(&mut vm);
         vm
     }
 
@@ -182,6 +219,13 @@ impl VM {
             task_registry: Arc::clone(&self.task_registry),
             cancel_token: Arc::new(AtomicBool::new(false)), // child gets its own token
             task_group_stack: Vec::new(),
+            ws_connections: Arc::clone(&self.ws_connections),
+            next_ws_id: Arc::clone(&self.next_ws_id),
+            ws_routes: Arc::clone(&self.ws_routes),
+            coroutines: HashMap::new(),
+            next_coro_id: 0,
+            coro_yield_tx: None,
+            coro_resume_rx: None,
             profiler: None,         // children don't profile
             otel: OtelState::new(), // children get their own otel state
         }
@@ -335,6 +379,186 @@ impl VM {
             }
         });
 
+        // task_id poll -> :pending or {:done, value} or {:error, msg}
+        self.builtins.insert("poll".to_string(), |vm| {
+            let id = vm.pop()?;
+            match id {
+                Value::Int(task_id) => {
+                    let tid = task_id as u64;
+                    let result = {
+                        let guard = vm.task_results.lock().unwrap();
+                        guard.get(&tid).and_then(|r| r.clone())
+                    };
+                    match result {
+                        None => {
+                            vm.stack.push(Value::Symbol("pending".to_string()));
+                        }
+                        Some(Ok(val)) => {
+                            vm.stack
+                                .push(Value::List(vec![Value::Symbol("done".to_string()), val]));
+                        }
+                        Some(Err(e)) => {
+                            vm.stack.push(Value::List(vec![
+                                Value::Symbol("error".to_string()),
+                                Value::Str(e),
+                            ]));
+                        }
+                    }
+                    Ok(())
+                }
+                _ => Err("'poll' expects int task id".to_string()),
+            }
+        });
+
+        // ---- Coroutines ----
+
+        // [quotation] coroutine -> coro_id
+        self.builtins.insert("coroutine".to_string(), |vm| {
+            let val = vm.pop()?;
+            match val {
+                Value::Quotation(ops) => {
+                    let coro_id = vm.next_coro_id;
+                    vm.next_coro_id += 1;
+
+                    let (resume_tx, resume_rx) = std::sync::mpsc::channel::<Value>();
+                    let (yield_tx, yield_rx) = std::sync::mpsc::channel::<CoroutineMsg>();
+
+                    let mut child = vm.spawn_child();
+                    // Wire up coroutine channels in the child VM
+                    child.coro_yield_tx = Some(yield_tx.clone());
+                    child.coro_resume_rx = Some(Arc::new(Mutex::new(resume_rx)));
+
+                    std::thread::spawn(move || {
+                        // Wait for first resume to start
+                        if child
+                            .coro_resume_rx
+                            .as_ref()
+                            .unwrap()
+                            .lock()
+                            .unwrap()
+                            .recv()
+                            .is_err()
+                        {
+                            let _ = yield_tx.send(CoroutineMsg::Done(Err(
+                                "coroutine cancelled before start".into(),
+                            )));
+                            return;
+                        }
+
+                        match child.run(ops) {
+                            Ok(()) => {
+                                let result =
+                                    child.stack.pop().unwrap_or(Value::Symbol("null".into()));
+                                let _ = yield_tx.send(CoroutineMsg::Done(Ok(result)));
+                            }
+                            Err(e) => {
+                                let _ = yield_tx.send(CoroutineMsg::Done(Err(e)));
+                            }
+                        }
+                    });
+
+                    vm.coroutines.insert(
+                        coro_id,
+                        Coroutine {
+                            resume_tx,
+                            yield_rx,
+                            done: false,
+                        },
+                    );
+                    vm.stack.push(Value::Int(coro_id as i64));
+                    Ok(())
+                }
+                _ => Err(format!(
+                    "'coroutine' expects a quotation, got {}",
+                    val.type_name()
+                )),
+            }
+        });
+
+        // value yield -> resume_value (only valid inside a coroutine)
+        self.builtins.insert("yield".to_string(), |vm| {
+            let val = vm.pop()?;
+            let tx = vm
+                .coro_yield_tx
+                .as_ref()
+                .ok_or("'yield' can only be used inside a coroutine")?
+                .clone();
+            let rx = vm
+                .coro_resume_rx
+                .as_ref()
+                .ok_or("'yield' can only be used inside a coroutine")?
+                .clone();
+
+            tx.send(CoroutineMsg::Yielded(val))
+                .map_err(|_| "coroutine: yield channel closed".to_string())?;
+
+            let resume_val = rx
+                .lock()
+                .unwrap()
+                .recv()
+                .map_err(|_| "coroutine: resume channel closed".to_string())?;
+            vm.stack.push(resume_val);
+            Ok(())
+        });
+
+        // value coro_id resume -> yielded_value
+        self.builtins.insert("resume".to_string(), |vm| {
+            let id_val = vm.pop()?;
+            let send_val = vm.pop()?;
+            match id_val {
+                Value::Int(cid) => {
+                    let coro_id = cid as u64;
+                    let msg = {
+                        let coro = vm.coroutines.get(&coro_id).ok_or_else(|| {
+                            format!("coroutine {} not found or already finished", coro_id)
+                        })?;
+                        if coro.done {
+                            return Err(format!("coroutine {} already finished", coro_id));
+                        }
+                        coro.resume_tx
+                            .send(send_val)
+                            .map_err(|_| format!("coroutine {} thread died", coro_id))?;
+                        coro.yield_rx
+                            .recv()
+                            .map_err(|_| format!("coroutine {} thread died", coro_id))?
+                    };
+                    match msg {
+                        CoroutineMsg::Yielded(val) => {
+                            vm.stack.push(val);
+                            Ok(())
+                        }
+                        CoroutineMsg::Done(result) => {
+                            if let Some(coro) = vm.coroutines.get_mut(&coro_id) {
+                                coro.done = true;
+                            }
+                            match result {
+                                Ok(val) => {
+                                    vm.stack.push(val);
+                                    Ok(())
+                                }
+                                Err(e) => Err(e),
+                            }
+                        }
+                    }
+                }
+                _ => Err("'resume' expects int coroutine id".to_string()),
+            }
+        });
+
+        // coro_id coro_done? -> bool
+        self.builtins.insert("coro_done?".to_string(), |vm| {
+            let id_val = vm.pop()?;
+            match id_val {
+                Value::Int(cid) => {
+                    let coro_id = cid as u64;
+                    let done = vm.coroutines.get(&coro_id).map(|c| c.done).unwrap_or(true);
+                    vm.stack.push(Value::Bool(done));
+                    Ok(())
+                }
+                _ => Err("'coro_done?' expects int coroutine id".to_string()),
+            }
+        });
+
         // "value" "channel" send -> (sends value to named channel)
         self.builtins.insert("send".to_string(), |vm| {
             let chan = vm.pop()?;
@@ -415,7 +639,7 @@ impl VM {
 
         // ---- Hot Reload ----
 
-        // "path" load -> (evaluates a .sabo file in current VM context)
+        // "path" load -> (evaluates a .sabot file in current VM context)
         self.builtins.insert("load".to_string(), |vm| {
             let path = vm.pop()?;
             match path {
@@ -578,7 +802,7 @@ impl VM {
             let path_val = vm.pop()?;
             match path_val {
                 Value::Str(path) => {
-                    // Derive module name from filename (e.g., "lib/math.sabo" -> "math")
+                    // Derive module name from filename (e.g., "lib/math.sabot" -> "math")
                     let module_name = std::path::Path::new(&path)
                         .file_stem()
                         .and_then(|s| s.to_str())
@@ -983,16 +1207,20 @@ impl VM {
                     let listener = std::net::TcpListener::bind(&addr)
                         .map_err(|e| format!("Cannot bind to {}: {}", addr, e))?;
 
-                    println!("  Sabo HTTP server listening on http://localhost:{}", p);
+                    println!("  Sabot HTTP server listening on http://localhost:{}", p);
                     println!("  Press Ctrl+C to stop\n");
 
                     // Snapshot routes and static dirs
                     let routes = vm.routes.lock().unwrap().clone();
                     let static_dirs = vm.static_dirs.lock().unwrap().clone();
+                    let ws_routes = vm.ws_routes.lock().unwrap().clone();
 
                     // Log registered routes
                     for r in &routes {
                         println!("  {} {}", r.method, r.pattern);
+                    }
+                    for wr in &ws_routes {
+                        println!("  WS {}", wr.path);
                     }
                     for sd in &static_dirs {
                         println!("  STATIC {}/* -> {}/", sd.url_prefix, sd.fs_path);
@@ -1007,12 +1235,14 @@ impl VM {
                             Ok(stream) => {
                                 let routes = routes.clone();
                                 let static_dirs = static_dirs.clone();
+                                let ws_routes = ws_routes.clone();
                                 let template = vm_template.spawn_child();
                                 std::thread::spawn(move || {
                                     crate::builtins_http::handle_connection(
                                         stream,
                                         &routes,
                                         &static_dirs,
+                                        &ws_routes,
                                         &template,
                                     );
                                 });
@@ -3062,5 +3292,14 @@ impl VM {
 
     pub fn clear_stack(&mut self) {
         self.stack.clear();
+    }
+
+    /// Get all completable names (builtins + user words + globals)
+    pub fn all_names(&self) -> Vec<String> {
+        let mut names: Vec<String> = Vec::new();
+        names.extend(self.builtins.keys().cloned());
+        names.extend(self.words.keys().cloned());
+        names.extend(self.globals.keys().cloned());
+        names
     }
 }

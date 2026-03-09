@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Sabo will be documented in this file.
+All notable changes to Sabot will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -28,11 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Error handling (`try`, `throw`, `error`) with source line numbers in errors
 
 #### Standard Library
-- `lib/math.sabo` -- 18 math utilities (factorial, fib, gcd, lcm, pow, etc.)
-- `lib/list.sabo` -- 16 list utilities (take, drop, flatten, zip, chunk, etc.)
-- `lib/string.sabo` -- 15 string utilities (pad, center, surround, etc.)
-- `lib/functional.sabo` -- 10 functional utilities (compose, pipe, iterate, etc.)
-- `lib/map.sabo` -- map predicates and sizing
+- `lib/math.sabot` -- 18 math utilities (factorial, fib, gcd, lcm, pow, etc.)
+- `lib/list.sabot` -- 16 list utilities (take, drop, flatten, zip, chunk, etc.)
+- `lib/string.sabot` -- 15 string utilities (pad, center, surround, etc.)
+- `lib/functional.sabot` -- 10 functional utilities (compose, pipe, iterate, etc.)
+- `lib/map.sabot` -- map predicates and sizing
 
 #### Built-in I/O & Networking
 - File I/O: `read_file`, `read_lines`, `write_file`, `append_file`, `file_exists`, `ls`
@@ -71,10 +71,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Combined export: `otel_dump`, `otel_reset`
 
 #### Tooling
-- Interactive REPL with multi-line input and `.saborc` startup file
-- Test runner (`sabo test`) with `assert`, `assert_eq`, `assert_neq`
-- Source formatter (`sabo fmt`) with idempotent output
-- Execution profiler (`sabo profile`) with per-word timing
+- Interactive REPL with multi-line input and `.sabotrc` startup file
+- Test runner (`sabot test`) with `assert`, `assert_eq`, `assert_neq`
+- Source formatter (`sabot fmt`) with idempotent output
+- Execution profiler (`sabot profile`) with per-word timing
 - Memoization: `memo`, `memo_clear`
 - Module system: `import` with dotted name access
 - Regular expressions: `regex_match?`, `regex_find`, `regex_find_all`, `regex_replace`, `regex_split`, `regex_captures`
@@ -88,12 +88,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - VS Code extension with syntax highlighting, bracket matching, comment toggling, and string interpolation support
 
 #### Example Programs
-- `programs/wordcount.sabo` -- wc-like word frequency counter
-- `programs/todo.sabo` -- SQLite-backed CLI task manager
-- `programs/budget.sabo` -- reactive budget tracker
-- `programs/server.sabo` -- HTTP server with REST API
-- `programs/github_stats.sabo` -- GitHub profile fetcher
-- `games/the_vault.sabo` -- text adventure game
+- `programs/wordcount.sabot` -- wc-like word frequency counter
+- `programs/todo.sabot` -- SQLite-backed CLI task manager
+- `programs/budget.sabot` -- reactive budget tracker
+- `programs/server.sabot` -- HTTP server with REST API
+- `programs/github_stats.sabot` -- GitHub profile fetcher
+- `games/the_vault.sabot` -- text adventure game
 
-[Unreleased]: https://github.com/seamoss/sabo/compare/v0.4.0...HEAD
-[0.4.0]: https://github.com/seamoss/sabo/releases/tag/v0.4.0
+[Unreleased]: https://github.com/seamoss/sabot/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/seamoss/sabot/releases/tag/v0.4.0

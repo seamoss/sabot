@@ -1,7 +1,7 @@
-# Sabo Makefile
+# Sabot Makefile
 # Usage: make [target]
 
-BINARY    := sabo
+BINARY    := sabot
 CARGO     := cargo
 VERSION   := $(shell cat VERSION 2>/dev/null | tr -d '[:space:]')
 
@@ -30,7 +30,7 @@ clean: ## Remove build artifacts
 # ============================================================
 
 .PHONY: test
-test: build ## Run all tests (Rust + Sabo)
+test: build ## Run all tests (Rust + Sabot)
 	$(CARGO) test
 	./target/debug/$(BINARY) test lib/
 
@@ -38,8 +38,8 @@ test: build ## Run all tests (Rust + Sabo)
 test-rust: ## Run Rust unit tests only
 	$(CARGO) test
 
-.PHONY: test-sabo
-test-sabo: build ## Run Sabo test suite only
+.PHONY: test-sabot
+test-sabot: build ## Run Sabot test suite only
 	./target/debug/$(BINARY) test lib/
 
 # ============================================================
@@ -61,9 +61,9 @@ clippy: ## Run Clippy lints
 .PHONY: lint
 lint: fmt-check clippy ## Run all lints
 
-.PHONY: fmt-sabo
-fmt-sabo: build ## Format all Sabo source files in place
-	@for f in lib/*.sabo examples/*.sabo programs/*.sabo games/*.sabo tools/*.sabo; do \
+.PHONY: fmt-sabot
+fmt-sabot: build ## Format all Sabot source files in place
+	@for f in lib/*.sabot examples/*.sabot programs/*.sabot games/*.sabot tools/*.sabot; do \
 		[ -f "$$f" ] && ./target/debug/$(BINARY) fmt -w "$$f"; \
 	done
 
@@ -73,10 +73,10 @@ fmt-sabo: build ## Format all Sabo source files in place
 
 .PHONY: bench
 bench: release ## Run benchmarks
-	./target/release/$(BINARY) tools/bench.sabo
+	./target/release/$(BINARY) tools/bench.sabot
 
 .PHONY: profile
-profile: build ## Profile (usage: make profile FILE=examples/hello.sabo)
+profile: build ## Profile (usage: make profile FILE=examples/hello.sabot)
 	./target/debug/$(BINARY) profile $(FILE)
 
 .PHONY: repl
@@ -179,11 +179,11 @@ act-list: ## List all jobs act would run
 # ============================================================
 
 .PHONY: install
-install: ## Install sabo to ~/.cargo/bin
+install: ## Install sabot to ~/.cargo/bin
 	$(CARGO) install --path .
 
 .PHONY: uninstall
-uninstall: ## Uninstall sabo from ~/.cargo/bin
+uninstall: ## Uninstall sabot from ~/.cargo/bin
 	$(CARGO) uninstall $(BINARY)
 
 # ============================================================

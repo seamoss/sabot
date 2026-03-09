@@ -1,4 +1,4 @@
-/// Bytecode instructions for the Sabo VM
+/// Bytecode instructions for the Sabot VM
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub enum Op {

@@ -2,8 +2,8 @@ use crate::value::Value;
 use rusqlite::{Connection, params_from_iter, types::Value as SqlValue};
 use std::collections::HashMap;
 
-/// Convert a Sabo Value to a rusqlite parameter
-fn sabo_to_sql(val: &Value) -> SqlValue {
+// Convert a Sabot Value to a rusqlite parameter
+fn sabot_to_sql(val: &Value) -> SqlValue {
     match val {
         Value::Int(n) => SqlValue::Integer(*n),
         Value::Float(f) => SqlValue::Real(*f),
@@ -14,8 +14,8 @@ fn sabo_to_sql(val: &Value) -> SqlValue {
     }
 }
 
-/// Convert a rusqlite value to a Sabo Value
-fn sql_to_sabo(val: &rusqlite::types::ValueRef) -> Value {
+// Convert a rusqlite value to a Sabot Value
+fn sql_to_sabot(val: &rusqlite::types::ValueRef) -> Value {
     match val {
         rusqlite::types::ValueRef::Null => Value::Symbol("null".to_string()),
         rusqlite::types::ValueRef::Integer(n) => Value::Int(*n),
@@ -27,7 +27,7 @@ fn sql_to_sabo(val: &rusqlite::types::ValueRef) -> Value {
 
 /// Execute a query and return results as a list of maps
 pub fn query(conn: &Connection, sql: &str, params: &[Value]) -> Result<Value, String> {
-    let sql_params: Vec<SqlValue> = params.iter().map(sabo_to_sql).collect();
+    let sql_params: Vec<SqlValue> = params.iter().map(sabot_to_sql).collect();
     let mut stmt = conn
         .prepare(sql)
         .map_err(|e| format!("SQL prepare error: {}", e))?;
@@ -39,7 +39,7 @@ pub fn query(conn: &Connection, sql: &str, params: &[Value]) -> Result<Value, St
             let mut map = HashMap::new();
             for (i, name) in column_names.iter().enumerate() {
                 let val = row.get_ref(i).unwrap();
-                map.insert(Value::Str(name.clone()), sql_to_sabo(&val));
+                map.insert(Value::Str(name.clone()), sql_to_sabot(&val));
             }
             Ok(Value::Map(map))
         })
@@ -54,7 +54,7 @@ pub fn query(conn: &Connection, sql: &str, params: &[Value]) -> Result<Value, St
 
 /// Execute a statement (INSERT, UPDATE, DELETE, CREATE, etc.)
 pub fn exec(conn: &Connection, sql: &str, params: &[Value]) -> Result<usize, String> {
-    let sql_params: Vec<SqlValue> = params.iter().map(sabo_to_sql).collect();
+    let sql_params: Vec<SqlValue> = params.iter().map(sabot_to_sql).collect();
     conn.execute(sql, params_from_iter(sql_params))
         .map_err(|e| format!("SQL exec error: {}", e))
 }

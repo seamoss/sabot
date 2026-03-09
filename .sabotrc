@@ -1,0 +1,15 @@
+-- Sabot REPL startup file
+-- Loaded automatically when the REPL starts.
+-- Place in project root or ~/.sabotrc
+
+-- Load standard library
+"lib/math.sabot" import
+"lib/list.sabot" import
+"lib/string.sabot" import
+"lib/functional.sabot" import
+"lib/map.sabot" import
+
+-- Handy REPL aliases
+: pp  [x] -> x println ;
+: clr [] -> depth [drop] times ;
+: show_stack [] -> depth println ;

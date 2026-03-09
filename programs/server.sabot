@@ -1,7 +1,7 @@
 -- =============================================
 --  S A B O   H T T P   S E R V E R
 --  A demo web server written in Sabo
---  Usage: sabo programs/server.sabo
+--  Usage: sabot programs/server.sabo
 -- =============================================
 
 -- === RESPONSE HELPERS ===

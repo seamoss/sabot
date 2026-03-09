@@ -1,12 +1,12 @@
-# Sabo Syntax Reference
+# Sabot Syntax Reference
 
-Quick reference for all Sabo syntax. For full documentation see [LANGUAGE.md](LANGUAGE.md).
+Quick reference for all Sabot syntax. For full documentation see [LANGUAGE.md](LANGUAGE.md).
 
 ---
 
 ## Comments
 
-```sabo
+```sabot
 -- This is a line comment (everything after -- is ignored)
 ```
 
@@ -14,7 +14,7 @@ Quick reference for all Sabo syntax. For full documentation see [LANGUAGE.md](LA
 
 ## Literals
 
-```sabo
+```sabot
 42              -- integer
 -7              -- negative integer
 3.14            -- float
@@ -38,7 +38,7 @@ false           -- boolean
 
 ## String Interpolation
 
-```sabo
+```sabot
 "hello {name}, you are {age}!"
 ```
 
@@ -50,7 +50,7 @@ Variables are looked up (locals → globals) and converted via `to_str`. Only si
 
 ### Lists
 
-```sabo
+```sabot
 {1, 2, 3}           -- list literal
 {}                   -- empty list
 {1, "two", :three}   -- mixed types ok
@@ -58,7 +58,7 @@ Variables are looked up (locals → globals) and converted via `to_str`. Only si
 
 ### Maps
 
-```sabo
+```sabot
 #{"key" => "val", "n" => 42}   -- map literal
 #{}                             -- empty map
 
@@ -116,42 +116,42 @@ not   ( a -- bool )      logical not
 
 ## Word Definitions
 
-```sabo
+```sabot
 : word_name
   [pattern] -> body_expressions
 ;
 ```
 
-Words are Sabo's functions. Every word must have at least one pattern-matching arm.
+Words are Sabot's functions. Every word must have at least one pattern-matching arm.
 
 Identifiers may end with `?` or `!` (convention: `?` for predicates, `!` for side-effects):
 
-```sabo
+```sabot
 : even? [n] -> n 2 % 0 == ;
 : save! [data] -> data "out.txt" write_file ;
 ```
 
 ### Zero Arguments
 
-```sabo
+```sabot
 : greet [] -> "hello" println ;
 ```
 
 ### Single Argument
 
-```sabo
+```sabot
 : double [n] -> n 2 * ;
 ```
 
 ### Multiple Arguments
 
-```sabo
+```sabot
 : add [a, b] -> a b + ;
 ```
 
 ### Multi-Arm (Pattern Matching)
 
-```sabo
+```sabot
 : factorial
   [0] -> 1
   [n] -> n n 1 - factorial *
@@ -162,7 +162,7 @@ Arms are tried top-to-bottom. First match wins.
 
 ### Pattern Types
 
-```sabo
+```sabot
 [n]           -- bind to variable
 [42]          -- match literal int
 [3.14]        -- match literal float
@@ -175,14 +175,14 @@ Arms are tried top-to-bottom. First match wins.
 
 ### List Patterns
 
-```sabo
+```sabot
 {[]}          -- match empty list
 {[h | t]}     -- match head and tail (cons destructure)
 ```
 
 ### Guards
 
-```sabo
+```sabot
 : classify
   [n] where n > 0 -> "positive"
   [n] where n < 0 -> "negative"
@@ -203,7 +203,7 @@ Guards can only reference pattern-bound variables and literals — no word calls
 
 The last call in an arm body is optimized if it's a self-recursive call:
 
-```sabo
+```sabot
 : count_down
   [0] -> "done"
   [n] -> n 1 - count_down    -- tail call, O(1) stack space
@@ -214,7 +214,7 @@ The last call in an arm body is optimized if it's a self-recursive call:
 
 ## Let Bindings
 
-```sabo
+```sabot
 let x = 42
 let msg = "hello " "world" +
 let nums = 1 10 range
@@ -224,7 +224,7 @@ Global scope. Body is everything until newline/semicolon. Top of stack is bound.
 
 ### Destructuring
 
-```sabo
+```sabot
 let {a, b, c} = {10, 20, 30}           -- list positional
 let {h | t} = {1, 2, 3}                -- head/tail (h=1, t={2,3})
 let #{"name" => n, "age" => a} = map   -- map keys
@@ -234,14 +234,14 @@ let #{"name" => n, "age" => a} = map   -- map keys
 
 ## Quotations
 
-```sabo
+```sabot
 [1 2 +]           -- quotation (first-class code block)
 [dup *]            -- can contain any expressions
 ```
 
 ### Execution
 
-```sabo
+```sabot
 [1 2 +] ~          -- apply: execute quotation (~)
 [1 2 +] apply      -- same thing
 ```
@@ -250,7 +250,7 @@ let #{"name" => n, "age" => a} = map   -- map keys
 
 Quotations inside word bodies capture enclosing pattern-bound variables:
 
-```sabo
+```sabot
 : make_adder [n] -> [n +] ;
 5 make_adder >add5     -- captures n=5
 3 add5> ~              -- 8
@@ -258,7 +258,7 @@ Quotations inside word bodies capture enclosing pattern-bound variables:
 
 ### Composition
 
-```sabo
+```sabot
 [2 *] [1 +] .      -- compose: creates [2 * 1 +]
 ```
 
@@ -266,7 +266,7 @@ Quotations inside word bodies capture enclosing pattern-bound variables:
 
 ## Named Stacks
 
-```sabo
+```sabot
 42 >aux        -- push 42 onto named stack "aux"
 aux>           -- pop from "aux" back to main stack
 ```
@@ -277,7 +277,7 @@ Syntax: `>name` (push), `name>` (pop). Any alphanumeric name works.
 
 ## Conditional Execution
 
-```sabo
+```sabot
 -- if_else: condition [then] [else] if_else
 true ["yes"] ["no"] if_else    -- "yes"
 
@@ -289,14 +289,14 @@ true ["yes" println] if_true
 
 ## Error Handling
 
-```sabo
+```sabot
 [1 0 /] try         -- {:error, "Division by zero"}
 [42] try             -- {:ok, 42}
 ```
 
 ### Structured Errors
 
-```sabo
+```sabot
 -- throw: throw any value as an error (caught by try)
 [:not_found throw] try           -- {:error, :not_found}
 [42 throw] try                   -- {:error, 42}
@@ -317,7 +317,7 @@ Runtime errors include source location:
 
 ## Regex
 
-```sabo
+```sabot
 "hello123" "\\d+" regex_match?         -- true
 "hello 42 world" "\\d+" regex_find     -- {:ok, "42"}
 "a1 b2 c3" "\\d+" regex_find_all      -- {"1", "2", "3"}
@@ -332,7 +332,7 @@ Note: Use `\{` and `\}` in strings to avoid interpolation when regex needs liter
 
 ## Reactive Cells
 
-```sabo
+```sabot
 100 "balance" cell                      -- create cell
 "balance" get_cell                      -- read cell
 200 "balance" set_cell                  -- update (triggers recomputation)
@@ -347,7 +347,7 @@ Note: Use `\{` and `\}` in strings to avoid interpolation when regex needs liter
 
 ### Basic Spawn/Await
 
-```sabo
+```sabot
 [42 2 *] spawn       -- spawn task, returns task_id
 await                 -- wait for result
 
@@ -357,7 +357,7 @@ await                 -- wait for result
 
 ### Typed Channels
 
-```sabo
+```sabot
 channel              -- create channel, returns channel_id (int)
 let ch = dup
 
@@ -369,7 +369,7 @@ ch ch_close          -- close channel (no more sends)
 
 ### Structured Concurrency
 
-```sabo
+```sabot
 -- spawn_linked: spawn tracked in current task group
 [10 20 +] spawn_linked    -- returns task_id
 
@@ -382,14 +382,14 @@ ch ch_close          -- close channel (no more sends)
 
 ### Cancellation
 
-```sabo
+```sabot
 task_id cancel       -- signal cancellation (propagates to children)
 cancelled?           -- check if current task is cancelled (bool)
 ```
 
 ### Scheduling
 
-```sabo
+```sabot
 -- timeout: run with time limit
 [long_computation] 1000 timeout   -- {:ok, result} or {:error, :timeout}
 
@@ -401,7 +401,7 @@ cancelled?           -- check if current task is cancelled (bool)
 
 ## Module System
 
-```sabo
+```sabot
 "examples/lib/math" import    -- load module
 
 math.square          -- call with module prefix
@@ -412,7 +412,7 @@ square               -- unqualified also works
 
 ## HTTP Server
 
-```sabo
+```sabot
 -- Define handler words
 : handle_hello [req] -> "Hello!" text_response ;
 
@@ -439,7 +439,7 @@ body      -- raw body string
 
 ### Response Map
 
-```sabo
+```sabot
 #{} "status" 200 set "body" "hello" set
 #{} "status" 200 set "body" data json_encode set "content_type" "application/json" set
 #{} "status" 302 set "headers" #{} "Location" "/new" set set
@@ -449,7 +449,7 @@ body      -- raw body string
 
 ## Memoization
 
-```sabo
+```sabot
 "fib" memo           -- cache results of fib by argument
 35 fib               -- computed once, cached
 35 fib               -- instant cache hit
@@ -460,7 +460,7 @@ body      -- raw body string
 
 ## SQLite Database
 
-```sabo
+```sabot
 ":memory:" db_open                  -- or "data.db" db_open
 
 "CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT)" db_exec drop
@@ -491,9 +491,9 @@ quit       exit
 
 ## Operator Precedence
 
-There is none. Sabo is **postfix** (reverse Polish notation). Everything evaluates left-to-right:
+There is none. Sabot is **postfix** (reverse Polish notation). Everything evaluates left-to-right:
 
-```sabo
+```sabot
 3 4 + 2 *    -- (3+4)*2 = 14
 3 4 2 * +    -- 3+(4*2) = 11
 ```
@@ -503,12 +503,12 @@ There is none. Sabo is **postfix** (reverse Polish notation). Everything evaluat
 ## CLI Tools
 
 ```
-sabo                       -- start REPL
-sabo file.sabo             -- run file
-sabo test dir/             -- run test files in directory
-sabo fmt file.sabo         -- print formatted source to stdout
-sabo fmt -w file.sabo      -- format file in place
-sabo profile file.sabo     -- run with profiling, print report
+sabot                       -- start REPL
+sabot file.sabot             -- run file
+sabot test dir/             -- run test files in directory
+sabot fmt file.sabot         -- print formatted source to stdout
+sabot fmt -w file.sabot      -- format file in place
+sabot profile file.sabot     -- run with profiling, print report
 ```
 
 ---

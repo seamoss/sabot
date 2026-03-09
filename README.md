@@ -1,10 +1,10 @@
-# Sabo
+# Sabot
 
 **A stack-based pattern matching language.**
 
-Sabo is an expressive scripting language that fuses the compositional power of Forth-style stack programming with the clarity of Erlang-style pattern matching. It compiles to bytecode and runs on a purpose-built virtual machine, all implemented in Rust with zero unsafe code.
+Sabot is an expressive scripting language that fuses the compositional power of Forth-style stack programming with the clarity of Erlang-style pattern matching. It compiles to bytecode and runs on a purpose-built virtual machine, all implemented in Rust with zero unsafe code.
 
-```sabo
+```sabot
 : factorial
   [0] -> 1
   [n] -> n n 1 - factorial *
@@ -98,7 +98,7 @@ Sabo is an expressive scripting language that fuses the compositional power of F
 
 ### Prerequisites
 
-Sabo is written in Rust. You need:
+Sabot is written in Rust. You need:
 
 - **Rust toolchain** (1.85+ recommended, edition 2024)
   - Install via [rustup](https://rustup.rs/):
@@ -120,12 +120,12 @@ Sabo is written in Rust. You need:
 Clone the repository and build:
 
 ```bash
-git clone https://github.com/seamoss/sabo.git
-cd sabo
+git clone https://github.com/seamoss/sabot.git
+cd sabot
 cargo build --release
 ```
 
-The binary will be at `./target/release/sabo`.
+The binary will be at `./target/release/sabot`.
 
 To install it system-wide (copies to `~/.cargo/bin/`):
 
@@ -137,23 +137,23 @@ Or add the release binary to your PATH manually:
 
 ```bash
 # Add to your shell profile (.bashrc, .zshrc, etc.)
-export PATH="/path/to/sabo/target/release:$PATH"
+export PATH="/path/to/sabot/target/release:$PATH"
 ```
 
 ### Verifying the Installation
 
 ```bash
-sabo --help    # Currently just runs the REPL if no args
-sabo           # Start the interactive REPL
+sabot --help    # Currently just runs the REPL if no args
+sabot           # Start the interactive REPL
 ```
 
 You should see:
 
 ```
-Sabo v0.4.0 -- stack-based pattern matching language
+Sabot v0.5.0 -- stack-based pattern matching language
 Type .help for commands, 'quit' to exit
 
-sabo>
+sabot>
 ```
 
 Type `2 3 +` and press Enter. You should see `5`. Type `quit` to exit.
@@ -164,35 +164,35 @@ Type `2 3 +` and press Enter. You should see `5`. Type `quit` to exit.
 
 ### Hello World
 
-Create a file called `hello.sabo`:
+Create a file called `hello.sabot`:
 
-```sabo
+```sabot
 "Hello, World!" println
 ```
 
 Run it:
 
 ```bash
-sabo hello.sabo
+sabot hello.sabot
 ```
 
 ### The REPL
 
-Start the interactive REPL by running `sabo` with no arguments:
+Start the interactive REPL by running `sabot` with no arguments:
 
 ```
-sabo> 2 3 + 4 *
+sabot> 2 3 + 4 *
   20
-sabo> "hello" " " + "world" +
+sabot> "hello" " " + "world" +
   "hello world"
-sabo> : double [n] -> n 2 * ;
-sabo> 21 double
+sabot> : double [n] -> n 2 * ;
+sabot> 21 double
   42
-sabo> .stack
+sabot> .stack
   42
-sabo> .clear
+sabot> .clear
   stack cleared
-sabo> quit
+sabot> quit
 ```
 
 The REPL shows the stack after each expression. Available dot-commands:
@@ -211,25 +211,25 @@ The REPL shows the stack after each expression. Available dot-commands:
 Multi-line input is supported. The REPL detects incomplete expressions (unclosed `:` definitions, brackets, braces) and continues prompting with `...` until the expression is complete:
 
 ```
-sabo> : factorial
+sabot> : factorial
   ...   [0] -> 1
   ...   [n] -> n n 1 - factorial *
   ... ;
-sabo> 10 factorial
+sabot> 10 factorial
   3628800
 ```
 
-#### REPL Startup File (.saborc)
+#### REPL Startup File (.sabotrc)
 
-If a `.saborc` file exists in the current directory (or `~/.saborc`), it is automatically loaded when the REPL starts. This is useful for importing your standard library and defining aliases:
+If a `.sabotrc` file exists in the current directory (or `~/.sabotrc`), it is automatically loaded when the REPL starts. This is useful for importing your standard library and defining aliases:
 
-```sabo
--- .saborc example
-"lib/math.sabo" import
-"lib/list.sabo" import
-"lib/string.sabo" import
-"lib/functional.sabo" import
-"lib/map.sabo" import
+```sabot
+-- .sabotrc example
+"lib/math.sabot" import
+"lib/list.sabot" import
+"lib/string.sabot" import
+"lib/functional.sabot" import
+"lib/map.sabot" import
 
 -- Handy REPL aliases
 : pp  [x] -> x println ;
@@ -239,17 +239,17 @@ If a `.saborc` file exists in the current directory (or `~/.saborc`), it is auto
 ### Running Files
 
 ```bash
-sabo program.sabo              # Run a Sabo source file
-sabo programs/todo.sabo list   # Run with arguments (access via `args` builtin)
+sabot program.sabot              # Run a Sabot source file
+sabot programs/todo.sabot list   # Run with arguments (access via `args` builtin)
 ```
 
 ---
 
 ## Language Tour
 
-Sabo is a **postfix** language. Values are pushed onto a stack, and operations consume values from the stack and push results back. There is no operator precedence -- everything evaluates strictly left-to-right.
+Sabot is a **postfix** language. Values are pushed onto a stack, and operations consume values from the stack and push results back. There is no operator precedence -- everything evaluates strictly left-to-right.
 
-```sabo
+```sabot
 3 4 + 2 *    -- (3+4)*2 = 14
 3 4 2 * +    -- 3+(4*2) = 11
 ```
@@ -269,7 +269,7 @@ depth   ( -- n )             Push the current stack depth
 
 ### Types
 
-Sabo has seven value types:
+Sabot has seven value types:
 
 | Type        | Examples                          | Description                          |
 |-------------|-----------------------------------|--------------------------------------|
@@ -284,7 +284,7 @@ Sabo has seven value types:
 
 Check a value's type at runtime with `type_of`:
 
-```sabo
+```sabot
 42 type_of         -- "int"
 "hello" type_of    -- "str"
 {1,2,3} type_of    -- "list"
@@ -292,9 +292,9 @@ Check a value's type at runtime with `type_of`:
 
 ### Word Definitions and Pattern Matching
 
-Words are Sabo's functions. Every word is defined with one or more pattern-matching arms. Patterns consume values from the stack and bind them to local variables:
+Words are Sabot's functions. Every word is defined with one or more pattern-matching arms. Patterns consume values from the stack and bind them to local variables:
 
-```sabo
+```sabot
 -- Zero arguments (matches without consuming anything)
 : greet [] -> "hello!" println ;
 
@@ -328,14 +328,14 @@ Words are Sabo's functions. Every word is defined with one or more pattern-match
 
 Identifiers may end with `?` or `!` by convention (`?` for predicates, `!` for side-effects):
 
-```sabo
+```sabot
 : even? [n] -> n 2 % 0 == ;
 : save! [data, path] -> data path write_file ;
 ```
 
 **Tail-call optimization**: Self-recursive calls in the last position of an arm body are optimized to reuse the current stack frame, enabling deep recursion without stack overflow:
 
-```sabo
+```sabot
 : count_down
   [0] -> "done"
   [n] -> n 1 - count_down    -- tail call: O(1) stack space
@@ -348,7 +348,7 @@ Identifiers may end with `?` or `!` by convention (`?` for predicates, `!` for s
 
 Guards add boolean conditions to pattern arms:
 
-```sabo
+```sabot
 : classify
   [n] where n > 0 -> "positive"
   [n] where n < 0 -> "negative"
@@ -373,7 +373,7 @@ Guard operators: `==`, `!=`, `<`, `>`, `<=`, `>=`, `and`, `or`, `not`. Guards ca
 
 `let` binds the top of the stack to a global name:
 
-```sabo
+```sabot
 42 let answer =
 "hello" " " + "world" + let greeting =
 
@@ -383,17 +383,17 @@ greeting println     -- "hello world"
 
 Destructuring is supported for lists and maps:
 
-```sabo
+```sabot
 {10, 20, 30} let {a, b, c} =       -- positional: a=10, b=20, c=30
 {1, 2, 3, 4} let {h | t} =         -- head/tail: h=1, t={2, 3, 4}
-#{"name" => "sabo"} let #{"name" => n} =   -- map key: n="sabo"
+#{"name" => "sabot"} let #{"name" => n} =   -- map key: n="sabot"
 ```
 
 ### Lists
 
 Lists are ordered collections that can contain mixed types:
 
-```sabo
+```sabot
 {1, 2, 3}                -- list literal
 {}                        -- empty list
 {1, "two", :three, true}  -- mixed types
@@ -414,8 +414,8 @@ Lists are ordered collections that can contain mixed types:
 
 Maps are hash maps with O(1) lookup. Any value type can be a key:
 
-```sabo
-#{"name" => "sabo", "version" => 4}   -- map literal
+```sabot
+#{"name" => "sabot", "version" => 4}   -- map literal
 #{}                                     -- empty map
 
 -- Operations
@@ -432,9 +432,9 @@ Maps are hash maps with O(1) lookup. Any value type can be a key:
 
 ### Quotations (Lambdas)
 
-Quotations are first-class code blocks -- Sabo's equivalent of anonymous functions or lambdas. They are delimited by square brackets and executed with `~` or `apply`:
+Quotations are first-class code blocks -- Sabot's equivalent of anonymous functions or lambdas. They are delimited by square brackets and executed with `~` or `apply`:
 
-```sabo
+```sabot
 [2 3 +] ~        -- 5 (execute the quotation)
 [2 3 +] apply    -- same thing
 
@@ -448,7 +448,7 @@ Quotations are first-class code blocks -- Sabo's equivalent of anonymous functio
 
 Quotations inside word bodies capture enclosing pattern-bound variables (closures):
 
-```sabo
+```sabot
 : make_adder [n] -> [n +] ;
 
 5 make_adder let add5 =
@@ -458,14 +458,14 @@ Quotations inside word bodies capture enclosing pattern-bound variables (closure
 
 Compose quotations with `.`:
 
-```sabo
+```sabot
 [2 *] [1 +] .    -- creates a quotation equivalent to [2 * 1 +]
 6 [2 *] [1 +] . ~   -- 13
 ```
 
 ### Higher-Order Functions
 
-```sabo
+```sabot
 -- map: apply quotation to each element
 {1, 2, 3, 4} [2 *] map            -- {2, 4, 6, 8}
 
@@ -486,7 +486,7 @@ Compose quotations with `.`:
 
 Variables inside `{}` in strings are automatically expanded:
 
-```sabo
+```sabot
 let name = "world"
 let n = 42
 "hello {name}, the answer is {n}!" println
@@ -501,7 +501,7 @@ Escape sequences: `\n` (newline), `\t` (tab), `\\` (backslash), `\"` (quote), `\
 
 Named stacks are secondary stacks for temporary storage:
 
-```sabo
+```sabot
 42 >temp       -- push 42 onto named stack "temp"
 "hi" >temp     -- push "hi" onto "temp"
 temp>          -- pop from "temp" -> "hi"
@@ -514,7 +514,7 @@ Syntax: `>name` (push), `name>` (pop). Any alphanumeric name works. Useful for k
 
 `try` wraps an expression and catches errors:
 
-```sabo
+```sabot
 [1 0 /] try          -- {:error, "Division by zero"}
 [42] try             -- {:ok, 42}
 
@@ -536,7 +536,7 @@ Runtime errors include source location:
 
 Built on Rust's `regex` crate:
 
-```sabo
+```sabot
 "hello123" "\\d+" regex_match?           -- true
 "hello 42 world" "\\d+" regex_find       -- {:ok, "42"}
 "a1 b2 c3" "\\d+" regex_find_all        -- {"1", "2", "3"}
@@ -548,10 +548,10 @@ Built on Rust's `regex` crate:
 
 ### Modules
 
-Import other Sabo files as modules:
+Import other Sabot files as modules:
 
-```sabo
-"lib/math.sabo" import
+```sabot
+"lib/math.sabot" import
 
 5 math.square    -- 25 (dotted access)
 5 square         -- 25 (unqualified also works)
@@ -563,37 +563,37 @@ All words defined in the imported file become available, both with and without t
 
 ## Standard Library
 
-Sabo ships with a standard library written in Sabo itself, located in the `lib/` directory:
+Sabot ships with a standard library written in Sabot itself, located in the `lib/` directory:
 
 | Module               | Contents                                                                        |
 |----------------------|---------------------------------------------------------------------------------|
-| `lib/math.sabo`      | `abs`, `negate`, `sign`, `min`, `max`, `clamp`, `pow`, `gcd`, `lcm`, `sum`, `product`, `average`, `factorial`, `fib`, `is_even`, `is_odd`, `is_divisible`, `square`, `cube` |
-| `lib/list.sabo`      | `take`, `drop_n`, `concat`, `flatten`, `zip`, `find`, `any_match`, `all_match`, `unique`, `last`, `init`, `repeat`, `index_of`, `sum_list`, `prod_list`, `chunk` |
-| `lib/string.sabo`    | `str_repeat`, `pad_left`, `pad_right`, `center`, `split_words`, `lines`, `join_words`, `unlines`, `is_empty_str`, `is_blank`, `surround`, `quote`, `parens`, `brackets`, `braces` |
-| `lib/functional.sabo` | `identity`, `const`, `flip`, `times`, `compose`, `when_true`, `when_false`, `pipe`, `iterate`, `until` |
-| `lib/map.sabo`       | `is_empty_map`, `map_size`                                                      |
+| `lib/math.sabot`      | `abs`, `negate`, `sign`, `min`, `max`, `clamp`, `pow`, `gcd`, `lcm`, `sum`, `product`, `average`, `factorial`, `fib`, `is_even`, `is_odd`, `is_divisible`, `square`, `cube` |
+| `lib/list.sabot`      | `take`, `drop_n`, `concat`, `flatten`, `zip`, `find`, `any_match`, `all_match`, `unique`, `last`, `init`, `repeat`, `index_of`, `sum_list`, `prod_list`, `chunk` |
+| `lib/string.sabot`    | `str_repeat`, `pad_left`, `pad_right`, `center`, `split_words`, `lines`, `join_words`, `unlines`, `is_empty_str`, `is_blank`, `surround`, `quote`, `parens`, `brackets`, `braces` |
+| `lib/functional.sabot` | `identity`, `const`, `flip`, `times`, `compose`, `when_true`, `when_false`, `pipe`, `iterate`, `until` |
+| `lib/map.sabot`       | `is_empty_map`, `map_size`                                                      |
 
 Import them in your scripts:
 
-```sabo
-"lib/math.sabo" import
-"lib/list.sabo" import
+```sabot
+"lib/math.sabot" import
+"lib/list.sabot" import
 
 25 square           -- 625
 {1, 2, 3, 4} 2 take -- {1, 2}
 ```
 
-Or load them all in your `.saborc` for REPL use.
+Or load them all in your `.sabotrc` for REPL use.
 
 ---
 
 ## Built-in Capabilities
 
-Sabo has an extensive set of builtins that require no imports. Everything below is available out of the box.
+Sabot has an extensive set of builtins that require no imports. Everything below is available out of the box.
 
 ### File I/O
 
-```sabo
+```sabot
 "config.txt" read_file                -- read entire file as string
 "data.csv" read_lines                 -- read file as list of lines
 "hello" "out.txt" write_file          -- write string to file (creates/overwrites)
@@ -604,23 +604,23 @@ Sabo has an extensive set of builtins that require no imports. Everything below 
 
 ### Shell Execution
 
-```sabo
+```sabot
 "ls -la" exec                         -- execute shell command, return stdout
 "grep -c error log.txt" exec_full     -- returns #{"stdout" => ..., "stderr" => ..., "code" => 0}
 ```
 
 ### HTTP Client
 
-```sabo
+```sabot
 "https://httpbin.org/get" http_get    -- GET request, returns response body
 "body" "https://httpbin.org/post" http_post   -- POST with body
 ```
 
 ### HTTP Server
 
-Sabo includes a built-in threaded HTTP/1.1 server:
+Sabot includes a built-in threaded HTTP/1.1 server:
 
-```sabo
+```sabot
 -- Define route handlers (each receives a request map, returns a response map)
 : handle_hello
   [req] -> #{"status" => 200, "body" => "Hello, World!"}
@@ -649,7 +649,7 @@ Request maps contain: `method`, `path`, `query` (map), `params` (map from path p
 
 Built-in SQLite via `rusqlite` (bundled, no external install required):
 
-```sabo
+```sabot
 -- Open a database (file or :memory:)
 "app.db" db_open
 
@@ -672,34 +672,34 @@ db_close
 
 ### Serialization (JSON, YAML, TOML, Protobuf)
 
-Multi-format serialization with automatic type mapping between Sabo values and text/binary formats:
+Multi-format serialization with automatic type mapping between Sabot values and text/binary formats:
 
-```sabo
+```sabot
 -- JSON
-#{"name" => "sabo", "version" => 4} json_encode    -- compact JSON string
-#{"name" => "sabo"} json_pretty                     -- pretty-printed JSON
-"{\"name\": \"sabo\"}" json_parse                   -- parse JSON to Sabo values
+#{"name" => "sabot", "version" => 4} json_encode    -- compact JSON string
+#{"name" => "sabot"} json_pretty                     -- pretty-printed JSON
+"{\"name\": \"sabot\"}" json_parse                   -- parse JSON to Sabot values
 
 -- YAML
 #{"color" => "red", "count" => 5} yaml_encode       -- YAML string
-"name: sabo\nversion: 4" yaml_parse                 -- parse YAML
+"name: sabot\nversion: 4" yaml_parse                 -- parse YAML
 
 -- TOML
 #{"key" => "value", "num" => 42} toml_encode        -- TOML string
-"name = \"sabo\"\nversion = 4" toml_parse            -- parse TOML
+"name = \"sabot\"\nversion = 4" toml_parse            -- parse TOML
 
 -- Binary (protobuf-style TLV encoding)
 #{"data" => {1, 2, 3}} proto_encode                 -- encode to list of bytes
-proto_decode                                         -- decode back to Sabo values
+proto_decode                                         -- decode back to Sabot values
 ```
 
-All text formats use serde under the hood. The binary format is a custom self-describing TLV (type-length-value) encoding that roundtrips all Sabo value types. See [LANGUAGE.md](docs/LANGUAGE.md#serialization-json-yaml-toml-protobuf) for the full type mapping and wire format spec.
+All text formats use serde under the hood. The binary format is a custom self-describing TLV (type-length-value) encoding that roundtrips all Sabot value types. See [LANGUAGE.md](docs/LANGUAGE.md#serialization-json-yaml-toml-protobuf) for the full type mapping and wire format spec.
 
 ### Reactive Cells
 
 Spreadsheet-style reactive programming. Cells hold values; computed cells recompute automatically when dependencies change; watchers fire on edge transitions:
 
-```sabo
+```sabot
 -- Create cells
 100 "price" cell
 0.08 "tax_rate" cell
@@ -720,9 +720,9 @@ Spreadsheet-style reactive programming. Cells hold values; computed cells recomp
 
 ### Concurrency
 
-Sabo supports structured concurrency with spawn/await, typed channels, cancellation, timeouts, and select:
+Sabot supports structured concurrency with spawn/await, typed channels, cancellation, timeouts, and select:
 
-```sabo
+```sabot
 -- Spawn tasks
 [42 2 *] spawn let t1 =
 ["hello" " world" +] spawn let t2 =
@@ -757,7 +757,7 @@ See [LANGUAGE.md](docs/LANGUAGE.md#concurrency) for the full concurrency documen
 
 Built-in OpenTelemetry-style observability with zero external dependencies:
 
-```sabo
+```sabot
 -- Tracing: nested spans with attributes and events
 "http-request" [
   "http.method" "GET" span_attr
@@ -780,13 +780,13 @@ Built-in OpenTelemetry-style observability with zero external dependencies:
 otel_dump    -- #{"spans" => [...], "metrics" => #{...}, "logs" => [...]}
 ```
 
-Logs print to stderr with timestamps. All telemetry data is queryable as Sabo values. See [LANGUAGE.md](docs/LANGUAGE.md#observability-tracing-metrics-logging) for the full API.
+Logs print to stderr with timestamps. All telemetry data is queryable as Sabot values. See [LANGUAGE.md](docs/LANGUAGE.md#observability-tracing-metrics-logging) for the full API.
 
 ### Memoization
 
 Cache the results of any word by name:
 
-```sabo
+```sabot
 : fib
   [0] -> 0
   [1] -> 1
@@ -807,10 +807,10 @@ Arity is auto-detected from the word's pattern. Cache keys are built from the to
 
 ### Test Runner
 
-Sabo has a built-in test runner with assertions:
+Sabot has a built-in test runner with assertions:
 
-```sabo
--- test_math.sabo
+```sabot
+-- test_math.sabot
 5 factorial 120 assert_eq
 -3 abs 3 assert_eq
 0 is_even true assert_eq
@@ -820,8 +820,8 @@ Sabo has a built-in test runner with assertions:
 Run tests:
 
 ```bash
-sabo test lib/                      # Run all test files in a directory
-sabo test lib/test_stdlib.sabo      # Run a single test file
+sabot test lib/                      # Run all test files in a directory
+sabot test lib/test_stdlib.sabot      # Run a single test file
 ```
 
 The test runner looks for files matching `*test*` in the directory. Each file runs independently. Results are reported with pass/fail counts and timing:
@@ -829,13 +829,13 @@ The test runner looks for files matching `*test*` in the directory. Each file ru
 ```
 Running 7 test file(s) in lib/
 
-  PASS  lib/test_concurrency.sabo
-  PASS  lib/test_destructure.sabo
-  PASS  lib/test_errors.sabo
-  PASS  lib/test_otel.sabo
-  PASS  lib/test_regex.sabo
-  PASS  lib/test_serial.sabo
-  PASS  lib/test_stdlib.sabo
+  PASS  lib/test_concurrency.sabot
+  PASS  lib/test_destructure.sabot
+  PASS  lib/test_errors.sabot
+  PASS  lib/test_otel.sabot
+  PASS  lib/test_regex.sabot
+  PASS  lib/test_serial.sabot
+  PASS  lib/test_stdlib.sabot
 
 --- Results ---
 Passed: 7
@@ -853,22 +853,22 @@ Available assertions:
 
 ### Formatter
 
-Format Sabo source code with consistent style:
+Format Sabot source code with consistent style:
 
 ```bash
-sabo fmt program.sabo          # Print formatted output to stdout
-sabo fmt -w program.sabo       # Format in place
-sabo fmt -w *.sabo             # Format multiple files
+sabot fmt program.sabot          # Print formatted output to stdout
+sabot fmt -w program.sabot       # Format in place
+sabot fmt -w *.sabot             # Format multiple files
 ```
 
 The formatter normalizes indentation, collapses blank lines, and formats word definitions with consistent arm alignment. Single-arm words that fit on one line are kept compact; multi-arm words get indented. Comments are preserved. The formatter is idempotent -- running it twice produces the same output.
 
 ### Profiler
 
-Run any Sabo program with execution profiling:
+Run any Sabot program with execution profiling:
 
 ```bash
-sabo profile program.sabo
+sabot profile program.sabot
 ```
 
 The profiler reports per-word call counts, total time, self time (excluding time in callees), and average time per call. It also highlights the hottest words by self time. Zero overhead when not enabled.
@@ -887,10 +887,10 @@ factorial             100       12         12         0.120
 
 ### Benchmarks
 
-A benchmark suite is included at `tools/bench.sabo`:
+A benchmark suite is included at `tools/bench.sabot`:
 
 ```bash
-sabo tools/bench.sabo
+sabot tools/bench.sabot
 ```
 
 Covers compute (fibonacci, factorial), collections (list building, sorting), strings (concatenation, splitting), regex, concurrency, and map operations.
@@ -905,16 +905,16 @@ A syntax highlighting extension is included in `editors/vscode/`:
 
 ```bash
 # Option 1: Symlink (recommended for development)
-ln -s "$(pwd)/editors/vscode" ~/.vscode/extensions/sabo-lang
+ln -s "$(pwd)/editors/vscode" ~/.vscode/extensions/sabot-lang
 
 # Option 2: Copy
-cp -r editors/vscode ~/.vscode/extensions/sabo-lang
+cp -r editors/vscode ~/.vscode/extensions/sabot-lang
 ```
 
 Reload VS Code (`Cmd+Shift+P` -> "Reload Window").
 
 Features:
-- Full syntax highlighting for `.sabo` files
+- Full syntax highlighting for `.sabot` files
 - Comment toggling (`Cmd+/`)
 - Bracket matching and auto-closing for `[]`, `{}`, `()`
 - String interpolation highlighting (`{variable}` inside strings)
@@ -924,76 +924,76 @@ Features:
 
 ## Example Programs
 
-The repository includes several complete example programs demonstrating Sabo's capabilities:
+The repository includes several complete example programs demonstrating Sabot's capabilities:
 
-### `programs/wordcount.sabo` -- Word Count Utility
+### `programs/wordcount.sabot` -- Word Count Utility
 A `wc`-like tool that counts lines, words, characters, and unique words. Displays the top 10 most frequent words with frequency counts.
 
 ```bash
-sabo programs/wordcount.sabo README.md
+sabot programs/wordcount.sabot README.md
 ```
 
-### `programs/todo.sabo` -- SQLite Todo App
+### `programs/todo.sabot` -- SQLite Todo App
 A CLI task manager backed by SQLite. Supports add, list, done, undo, remove, clear, and stats commands.
 
 ```bash
-sabo programs/todo.sabo add "Write documentation"
-sabo programs/todo.sabo list
-sabo programs/todo.sabo done 1
-sabo programs/todo.sabo stats
+sabot programs/todo.sabot add "Write documentation"
+sabot programs/todo.sabot list
+sabot programs/todo.sabot done 1
+sabot programs/todo.sabot stats
 ```
 
-### `programs/budget.sabo` -- Reactive Budget Tracker
+### `programs/budget.sabot` -- Reactive Budget Tracker
 An interactive budget tracker using reactive cells. Income and expenses are cells; totals and balance recompute automatically. Includes an overspend warning via edge-triggered watcher.
 
 ```bash
-sabo programs/budget.sabo
+sabot programs/budget.sabot
 ```
 
-### `programs/server.sabo` -- HTTP Server
+### `programs/server.sabot` -- HTTP Server
 A demo web server with 8 routes, static file serving, REST API endpoints, and JSON responses. Demonstrates the built-in HTTP server with path parameters and content negotiation.
 
 ```bash
-sabo programs/server.sabo
+sabot programs/server.sabot
 # Visit http://localhost:8080
 ```
 
-### `programs/github_stats.sabo` -- GitHub Profile Fetcher
+### `programs/github_stats.sabot` -- GitHub Profile Fetcher
 Fetches GitHub user data via the API, parses JSON, and displays profile statistics.
 
 ```bash
-sabo programs/github_stats.sabo
+sabot programs/github_stats.sabot
 ```
 
-### `games/the_vault.sabo` -- Text Adventure
+### `games/the_vault.sabot` -- Text Adventure
 A fully playable text adventure game with 6 rooms, inventory system, puzzle mechanics, reactive game state, and pattern-matched command parsing. Demonstrates reactive cells, maps, pattern matching, and interactive I/O working together.
 
 ```bash
-sabo games/the_vault.sabo
+sabot games/the_vault.sabot
 ```
 
 ### Example Scripts (examples/)
 
 | File                            | Demonstrates                                          |
 |---------------------------------|-------------------------------------------------------|
-| `examples/hello.sabo`           | Stack basics, word definitions, pattern matching      |
-| `examples/lists.sabo`           | List patterns, recursive sum, fibonacci               |
-| `examples/tier1.sabo`           | Let bindings, string interpolation, maps, try/error   |
-| `examples/tier2.sabo`           | File I/O, HTTP requests, JSON parsing                 |
-| `examples/tier3_reactive.sabo`  | Reactive cells, computed values, watchers             |
-| `examples/tier3_concurrency.sabo` | Spawn/await, channels, concurrent tasks             |
-| `examples/tier3_stacktrace.sabo` | Stack traces, error context, hot reload              |
-| `examples/tier4_tests.sabo`     | Full test suite using assert/assert_eq                |
-| `examples/tier4_modules.sabo`   | Module imports, dotted name access                    |
+| `examples/hello.sabot`           | Stack basics, word definitions, pattern matching      |
+| `examples/lists.sabot`           | List patterns, recursive sum, fibonacci               |
+| `examples/tier1.sabot`           | Let bindings, string interpolation, maps, try/error   |
+| `examples/tier2.sabot`           | File I/O, HTTP requests, JSON parsing                 |
+| `examples/tier3_reactive.sabot`  | Reactive cells, computed values, watchers             |
+| `examples/tier3_concurrency.sabot` | Spawn/await, channels, concurrent tasks             |
+| `examples/tier3_stacktrace.sabot` | Stack traces, error context, hot reload              |
+| `examples/tier4_tests.sabot`     | Full test suite using assert/assert_eq                |
+| `examples/tier4_modules.sabot`   | Module imports, dotted name access                    |
 
 ---
 
 ## Project Structure
 
 ```
-sabo/
+sabot/
 ├── Cargo.toml                  # Rust project manifest
-├── .saborc                     # REPL startup file
+├── .sabotrc                     # REPL startup file
 │
 ├── src/                        # Rust source (the implementation)
 │   ├── main.rs                 # Entry point: REPL, file runner, CLI commands
@@ -1013,33 +1013,33 @@ sabo/
 │   ├── formatter.rs            # Source code formatter
 │   └── profiler.rs             # Execution profiler
 │
-├── lib/                        # Standard library (written in Sabo)
-│   ├── math.sabo               # Math utilities
-│   ├── list.sabo               # List utilities
-│   ├── string.sabo             # String utilities
-│   ├── functional.sabo         # Functional programming utilities
-│   ├── map.sabo                # Map utilities
-│   ├── test_stdlib.sabo        # Standard library tests
-│   ├── test_regex.sabo         # Regex tests
-│   ├── test_errors.sabo        # Error handling tests
-│   ├── test_destructure.sabo   # Destructuring tests
-│   ├── test_concurrency.sabo   # Concurrency tests
-│   ├── test_serial.sabo        # Serialization tests
-│   └── test_otel.sabo          # Observability tests
+├── lib/                        # Standard library (written in Sabot)
+│   ├── math.sabot               # Math utilities
+│   ├── list.sabot               # List utilities
+│   ├── string.sabot             # String utilities
+│   ├── functional.sabot         # Functional programming utilities
+│   ├── map.sabot                # Map utilities
+│   ├── test_stdlib.sabot        # Standard library tests
+│   ├── test_regex.sabot         # Regex tests
+│   ├── test_errors.sabot        # Error handling tests
+│   ├── test_destructure.sabot   # Destructuring tests
+│   ├── test_concurrency.sabot   # Concurrency tests
+│   ├── test_serial.sabot        # Serialization tests
+│   └── test_otel.sabot          # Observability tests
 │
 ├── examples/                   # Example scripts
 ├── programs/                   # Complete programs
 │   └── public/                 # Static files for the server demo
 ├── games/                      # Games
 ├── tools/                      # Development tools
-│   ├── bench.sabo              # Benchmark suite
-│   └── run_tests.sabo          # Test runner
+│   ├── bench.sabot              # Benchmark suite
+│   └── run_tests.sabot          # Test runner
 │
 ├── editors/                    # Editor integrations
 │   └── vscode/                 # VS Code extension
 │       ├── package.json
 │       ├── language-configuration.json
-│       └── syntaxes/sabo.tmLanguage.json
+│       └── syntaxes/sabot.tmLanguage.json
 │
 └── docs/                       # Documentation
     ├── LANGUAGE.md             # Comprehensive language reference
@@ -1050,10 +1050,10 @@ sabo/
 
 ## Architecture
 
-Sabo follows a classic compilation pipeline:
+Sabot follows a classic compilation pipeline:
 
 ```
-Source Code (.sabo)
+Source Code (.sabot)
        │
        ▼
    ┌────────┐
@@ -1080,7 +1080,7 @@ The VM is a stack machine with:
 - **Operand stack** -- the main data stack
 - **Call frames** -- each with local variables, instruction pointer, and code block
 - **Global state** -- let bindings, reactive cells, channels, task registry, memoization cache
-- **Builtin registry** -- native Rust functions callable from Sabo
+- **Builtin registry** -- native Rust functions callable from Sabot
 
 All concurrency uses Rust's `std::thread` with `Arc<Mutex<...>>` for shared state. Each spawned task gets its own VM (via `spawn_child`) that shares words, builtins, globals, channels, and routes, but has an independent stack and reactive cell state.
 
@@ -1099,7 +1099,7 @@ All concurrency uses Rust's `std::thread` with `Arc<Mutex<...>>` for shared stat
 
 ### Branching Strategy
 
-Sabo uses a two-branch model:
+Sabot uses a two-branch model:
 
 ```
 dev (active development)
@@ -1136,8 +1136,8 @@ Files kept in sync:
 |------|-------------------|
 | `VERSION` | Raw version string (e.g., `0.4.0`) |
 | `Cargo.toml` | `version = "0.4.0"` |
-| `src/main.rs` | `Sabo v0.4.0` banner |
-| `README.md` | `Sabo v0.4.0` references |
+| `src/main.rs` | `Sabot v0.5.0` banner |
+| `README.md` | `Sabot v0.5.0` references |
 | `docs/LANGUAGE.md` | `v0.4.0` in the title |
 
 ### Makefile Targets
@@ -1151,9 +1151,9 @@ make help          # show all targets with descriptions
 | Category | Targets |
 |----------|---------|
 | **Build** | `build`, `release`, `clean` |
-| **Test** | `test` (all), `test-rust`, `test-sabo` |
+| **Test** | `test` (all), `test-rust`, `test-sabot` |
 | **Lint** | `fmt`, `fmt-check`, `clippy`, `lint` (all lints) |
-| **Format** | `fmt-sabo` (format all .sabo files) |
+| **Format** | `fmt-sabot` (format all .sabot files) |
 | **Tools** | `bench`, `profile FILE=...`, `repl` |
 | **Version** | `version`, `version-check`, `bump V=x.y.z` |
 | **Release** | `check` (full pre-release), `release-dry-run` |
@@ -1206,7 +1206,7 @@ git push origin dev
 
 ## Dependencies
 
-Sabo uses a minimal set of Rust crates:
+Sabot uses a minimal set of Rust crates:
 
 | Crate        | Version | Purpose                                      |
 |--------------|---------|----------------------------------------------|
@@ -1223,4 +1223,4 @@ Everything else -- the lexer, parser, compiler, VM, reactive system, concurrency
 
 ## License
 
-Sabo is licensed under the [GNU General Public License v3.0](LICENSE).
+Sabot is licensed under the [GNU General Public License v3.0](LICENSE).
