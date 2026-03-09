@@ -1,4 +1,4 @@
-# Sabot Language Reference v0.4.0
+# Sabot Language Reference v0.4.1
 
 **Sabot** is a stack-based, pattern-matching scripting language. Think Forth meets Erlang — postfix evaluation, quotations, reactive cells, channels, and hot reload, all compiled to bytecode and run on a custom Rust VM.
 

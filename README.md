@@ -150,7 +150,7 @@ sabot           # Start the interactive REPL
 You should see:
 
 ```
-Sabot v0.4.0 -- stack-based pattern matching language
+Sabot v0.4.1 -- stack-based pattern matching language
 Type .help for commands, 'quit' to exit
 
 sabot>
@@ -1136,8 +1136,8 @@ Files kept in sync:
 |------|-------------------|
 | `VERSION` | Raw version string (e.g., `0.4.0`) |
 | `Cargo.toml` | `version = "0.4.0"` |
-| `src/main.rs` | `Sabot v0.4.0` banner |
-| `README.md` | `Sabot v0.4.0` references |
+| `src/main.rs` | `Sabot v0.4.1` banner |
+| `README.md` | `Sabot v0.4.1` references |
 | `docs/LANGUAGE.md` | `v0.4.0` in the title |
 
 ### Makefile Targets
