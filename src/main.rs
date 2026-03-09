@@ -140,8 +140,23 @@ impl Validator for SabotHelper {}
 impl Helper for SabotHelper {}
 
 fn repl() {
-    println!("Sabot v0.4.1 -- stack-based pattern matching language");
-    println!("Type .help for commands, 'quit' to exit\n");
+    println!(
+        r#"
+  ╭──────────────────────────────────────────────╮
+  │                                              │
+  │   ███████  █████  ██████   ██████ ████████   │
+  │   ██      ██   ██ ██   ██ ██    ██   ██      │
+  │   ███████ ███████ ██████  ██    ██   ██      │
+  │        ██ ██   ██ ██   ██ ██    ██   ██      │
+  │   ███████ ██   ██ ██████   ██████    ██      │
+  │                                              │
+  │    ╶─╴ stack-based pattern matching ╶─╴      │
+  │        forth meets erlang · v0.5.0           │
+  │                                              │
+  │    .help for commands · quit to exit         │
+  ╰──────────────────────────────────────────────╯
+"#
+    );
 
     let mut vm = VM::new();
     let mut compiler = Compiler::new();

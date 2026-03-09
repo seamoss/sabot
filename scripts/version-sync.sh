@@ -65,10 +65,10 @@ sync_file "$ROOT/Cargo.toml" \
     'version = "[0-9]*\.[0-9]*\.[0-9]*"' \
     "version = \"$NEW_VERSION\""
 
-# src/main.rs: Sabot vX.Y.Z
+# src/main.rs: v0.X.Y in the REPL banner
 sync_file "$ROOT/src/main.rs" \
-    'Sabot v[0-9]*\.[0-9]*\.[0-9]*' \
-    "Sabot v$NEW_VERSION"
+    'v[0-9]*\.[0-9]*\.[0-9]*' \
+    "v$NEW_VERSION"
 
 # README.md: Sabot vX.Y.Z
 sync_file "$ROOT/README.md" \
