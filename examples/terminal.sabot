@@ -1,0 +1,32 @@
+-- terminal.sabot — Demonstrates the terminal builtins
+-- Run interactively: sabot examples/terminal.sabot
+
+-- Get terminal dimensions
+term_size
+let size = swap drop
+size 0 nth let rows = swap drop
+size 1 nth let cols = swap drop
+"Terminal: {rows} rows x {cols} cols" println
+
+-- Escape sequences: \e and \x1b both produce ESC (0x1B)
+"\e[1mBold text\e[0m" println
+"\e[31mRed text\e[0m" println
+"\e[32mGreen text\e[0m" println
+"\x1b[4mUnderlined text\x1b[0m" println
+
+-- Slice: substring and sublist extraction
+"Hello, World!" 0 5 slice println      -- Hello
+"Hello, World!" 7 12 slice println     -- World
+{10, 20, 30, 40, 50} 1 4 slice println -- {20, 30, 40}
+
+-- Raw terminal demo: read single keypresses
+-- Uncomment to try interactively:
+--
+-- "Press any 3 keys (then we restore the terminal):" println
+-- flush
+-- term_raw
+-- stdin_char let k1 = swap drop
+-- stdin_char let k2 = swap drop
+-- stdin_char let k3 = swap drop
+-- term_cooked
+-- "You pressed: '{k1}' '{k2}' '{k3}'" println

@@ -310,9 +310,28 @@ impl Lexer {
                 match self.peek() {
                     'n' => current_lit.push('\n'),
                     't' => current_lit.push('\t'),
+                    'r' => current_lit.push('\r'),
+                    'e' => current_lit.push('\x1B'),
+                    '0' => current_lit.push('\0'),
                     '\\' => current_lit.push('\\'),
                     '"' => current_lit.push('"'),
                     '{' => current_lit.push('{'),
+                    'x' => {
+                        // \xNN hex escape
+                        self.advance();
+                        let mut hex = String::new();
+                        for _ in 0..2 {
+                            if self.at_end() {
+                                return Err("Incomplete \\x escape".to_string());
+                            }
+                            hex.push(self.peek());
+                            self.advance();
+                        }
+                        let byte = u8::from_str_radix(&hex, 16)
+                            .map_err(|_| format!("Invalid hex escape: \\x{}", hex))?;
+                        current_lit.push(byte as char);
+                        continue; // already advanced past the hex digits
+                    }
                     c => current_lit.push(c),
                 }
                 self.advance();
