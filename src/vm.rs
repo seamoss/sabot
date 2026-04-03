@@ -2422,6 +2422,37 @@ impl VM {
             }
         });
 
+        // slice — substring or sublist: value start end slice -> value[start..end]
+        self.builtins.insert("slice".to_string(), |vm| {
+            let end = vm.pop()?;
+            let start = vm.pop()?;
+            let val = vm.pop()?;
+            match (val, start, end) {
+                (Value::Str(s), Value::Int(a), Value::Int(b)) => {
+                    let chars: Vec<char> = s.chars().collect();
+                    let a = a.max(0) as usize;
+                    let b = (b as usize).min(chars.len());
+                    if a > b {
+                        vm.stack.push(Value::Str(String::new()));
+                    } else {
+                        vm.stack.push(Value::Str(chars[a..b].iter().collect()));
+                    }
+                    Ok(())
+                }
+                (Value::List(l), Value::Int(a), Value::Int(b)) => {
+                    let a = a.max(0) as usize;
+                    let b = (b as usize).min(l.len());
+                    if a > b {
+                        vm.stack.push(Value::List(vec![]));
+                    } else {
+                        vm.stack.push(Value::List(l[a..b].to_vec()));
+                    }
+                    Ok(())
+                }
+                _ => Err("'slice' expects (string|list, int, int)".to_string()),
+            }
+        });
+
         // chars — split string into list of single-character strings
         self.builtins.insert("chars".to_string(), |vm| {
             let s = vm.pop()?;

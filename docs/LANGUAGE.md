@@ -33,13 +33,15 @@
 25. [Serialization (JSON, YAML, TOML, Protobuf)](#serialization-json-yaml-toml-protobuf)
 26. [Observability (Tracing, Metrics, Logging)](#observability-tracing-metrics-logging)
 27. [Environment & System](#environment--system)
-28. [Module System](#module-system)
-29. [Testing](#testing)
-30. [Introspection & Debugging](#introspection--debugging)
-31. [Hot Reload](#hot-reload)
-32. [HTTP Server](#http-server)
-33. [REPL Commands](#repl-commands)
-34. [Complete Builtin Reference](#complete-builtin-reference)
+28. [Terminal](#terminal)
+29. [Slice](#slice)
+30. [Module System](#module-system)
+31. [Testing](#testing)
+32. [Introspection & Debugging](#introspection--debugging)
+33. [Hot Reload](#hot-reload)
+34. [HTTP Server](#http-server)
+35. [REPL Commands](#repl-commands)
+36. [Complete Builtin Reference](#complete-builtin-reference)
 
 ---
 
@@ -553,7 +555,7 @@ Interpolation works by:
 
 **Escaping**: Use `\{` to include a literal `{` in a string.
 
-**Other escape sequences**: `\n` (newline), `\t` (tab), `\\` (backslash), `\"` (quote).
+**Escape sequences**: `\n` (newline), `\t` (tab), `\r` (carriage return), `\e` (escape/0x1B), `\0` (null), `\\` (backslash), `\"` (quote), `\xNN` (hex byte).
 
 **Note**: Only simple variable names work in interpolation — no expressions. `"{x + 1}"` will try to look up a variable literally named `x + 1`.
 
@@ -1391,6 +1393,55 @@ let elapsed = time_ms start -
 
 ---
 
+## Terminal
+
+Builtins for raw terminal I/O, enabling interactive TUI applications.
+
+| Word | Stack Effect | Description |
+|------|-------------|-------------|
+| `term_raw` | `( -- )` | Put terminal in raw mode (no echo, no line buffering) |
+| `term_cooked` | `( -- )` | Restore terminal to normal (cooked) mode |
+| `stdin_char` | `( -- string )` | Read a single byte from stdin as a 1-char string |
+| `stdin_byte` | `( -- int )` | Read a single byte from stdin as an integer (0-255) |
+| `flush` | `( -- )` | Flush stdout |
+| `term_size` | `( -- {rows, cols} )` | Get terminal dimensions as a 2-element list |
+
+```sabot
+-- Read a single keypress
+term_raw
+stdin_char let key = swap drop
+term_cooked
+"You pressed: {key}" println
+
+-- ANSI escape sequences (using \e)
+"\e[2J\e[H" print flush    -- clear screen, cursor home
+"\e[31mRed!\e[0m" println   -- colored output
+
+-- Get terminal size
+term_size
+let sz = swap drop
+sz 0 nth let rows = swap drop
+sz 1 nth let cols = swap drop
+```
+
+---
+
+## Slice
+
+Extract substrings or sublists by index range.
+
+| Word | Stack Effect | Description |
+|------|-------------|-------------|
+| `slice` | `( value start end -- value )` | Extract `value[start..end]` (0-indexed, exclusive end) |
+
+```sabot
+"Hello, World!" 0 5 slice     -- "Hello"
+"Hello, World!" 7 12 slice    -- "World"
+{10, 20, 30, 40, 50} 1 4 slice  -- {20, 30, 40}
+```
+
+---
+
 ## Module System
 
 Modules let you organize code across files and import definitions.
@@ -1763,7 +1814,7 @@ Command history is persisted to `~/.sabot_history` across sessions. Use up/down 
 `split`, `join`, `trim`, `contains`, `starts_with`, `lowercase`, `uppercase`, `replace`, `chars`, `reverse`, `len`
 
 ### List
-`head`, `tail`, `cons`, `append`, `nth`, `empty`, `reverse`, `sort`, `contains`, `len`, `range`
+`head`, `tail`, `cons`, `append`, `nth`, `empty`, `reverse`, `sort`, `contains`, `len`, `range`, `slice`
 
 ### Higher-Order
 `map` / `map_list`, `filter`, `fold`, `each`
@@ -1802,7 +1853,10 @@ Command history is persisted to `~/.sabot_history` across sessions. Use up/down 
 `span_start`, `span_end`, `span`, `span_attr`, `span_event`, `span_error`, `spans_dump`, `spans_reset`, `counter_inc`, `counter_add`, `gauge_set`, `gauge_inc`, `gauge_dec`, `histogram_record`, `metrics_dump`, `metrics_reset`, `log_debug`, `log_info`, `log_warn`, `log_error`, `log_with`, `log_level`, `logs_dump`, `logs_reset`, `otel_dump`, `otel_reset`
 
 ### Stdin
-`stdin_read`, `stdin_lines`, `input`
+`stdin_read`, `stdin_lines`, `input`, `stdin_char`, `stdin_byte`
+
+### Terminal
+`term_raw`, `term_cooked`, `flush`, `term_size`
 
 ### Environment
 `env_get`, `env_all`, `args`

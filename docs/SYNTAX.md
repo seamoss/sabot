@@ -27,11 +27,15 @@ false           -- boolean
 ### Escape Sequences (in strings)
 
 ```
-\n   newline
-\t   tab
-\\   backslash
-\"   quote
-\{   literal brace (prevents interpolation)
+\n      newline
+\t      tab
+\r      carriage return
+\e      escape (0x1B) — for ANSI sequences
+\0      null
+\\      backslash
+\"      quote
+\{      literal brace (prevents interpolation)
+\xNN    hex byte (e.g. \x1b for ESC)
 ```
 
 ---

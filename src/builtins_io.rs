@@ -262,6 +262,85 @@ pub fn io_builtins() -> Vec<(&'static str, BuiltinFn)> {
                 )),
             }
         }),
+        // ---- Terminal ----
+
+        // term_raw -> (puts terminal in raw mode)
+        ("term_raw", |_vm| {
+            use std::os::unix::io::AsRawFd;
+            let fd = std::io::stdin().as_raw_fd();
+            unsafe {
+                let mut termios: libc::termios = std::mem::zeroed();
+                if libc::tcgetattr(fd, &mut termios) != 0 {
+                    return Err("tcgetattr failed".to_string());
+                }
+                libc::cfmakeraw(&mut termios);
+                if libc::tcsetattr(fd, libc::TCSANOW, &termios) != 0 {
+                    return Err("tcsetattr failed".to_string());
+                }
+            }
+            Ok(())
+        }),
+        // term_cooked -> (restores terminal to cooked/sane mode)
+        ("term_cooked", |_vm| {
+            use std::os::unix::io::AsRawFd;
+            let fd = std::io::stdin().as_raw_fd();
+            unsafe {
+                let mut termios: libc::termios = std::mem::zeroed();
+                if libc::tcgetattr(fd, &mut termios) != 0 {
+                    return Err("tcgetattr failed".to_string());
+                }
+                termios.c_iflag |= libc::BRKINT | libc::ICRNL | libc::INPCK | libc::ISTRIP | libc::IXON;
+                termios.c_oflag |= libc::OPOST;
+                termios.c_cflag |= libc::CS8;
+                termios.c_lflag |= libc::ECHO | libc::ICANON | libc::IEXTEN | libc::ISIG;
+                if libc::tcsetattr(fd, libc::TCSANOW, &termios) != 0 {
+                    return Err("tcsetattr failed".to_string());
+                }
+            }
+            Ok(())
+        }),
+        // stdin_char -> string (reads a single byte from stdin, returns 1-char string)
+        ("stdin_char", |vm| {
+            use std::io::Read;
+            let mut buf = [0u8; 1];
+            std::io::stdin()
+                .read_exact(&mut buf)
+                .map_err(|e| format!("stdin_char failed: {}", e))?;
+            vm.push_val(Value::Str(String::from(buf[0] as char)));
+            Ok(())
+        }),
+        // stdin_byte -> int (reads a single byte from stdin, returns its numeric value)
+        ("stdin_byte", |vm| {
+            use std::io::Read;
+            let mut buf = [0u8; 1];
+            std::io::stdin()
+                .read_exact(&mut buf)
+                .map_err(|e| format!("stdin_byte failed: {}", e))?;
+            vm.push_val(Value::Int(buf[0] as i64));
+            Ok(())
+        }),
+        // flush -> (flushes stdout)
+        ("flush", |_vm| {
+            use std::io::Write;
+            std::io::stdout()
+                .flush()
+                .map_err(|e| format!("flush failed: {}", e))?;
+            Ok(())
+        }),
+        // term_size -> {rows, cols}
+        ("term_size", |vm| {
+            unsafe {
+                let mut ws: libc::winsize = std::mem::zeroed();
+                if libc::ioctl(1, libc::TIOCGWINSZ, &mut ws) != 0 {
+                    return Err("ioctl TIOCGWINSZ failed".to_string());
+                }
+                vm.push_val(Value::List(vec![
+                    Value::Int(ws.ws_row as i64),
+                    Value::Int(ws.ws_col as i64),
+                ]));
+            }
+            Ok(())
+        }),
         // ---- Environment ----
 
         // "NAME" env_get -> string (or error)
