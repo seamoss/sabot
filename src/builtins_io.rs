@@ -289,7 +289,8 @@ pub fn io_builtins() -> Vec<(&'static str, BuiltinFn)> {
                 if libc::tcgetattr(fd, &mut termios) != 0 {
                     return Err("tcgetattr failed".to_string());
                 }
-                termios.c_iflag |= libc::BRKINT | libc::ICRNL | libc::INPCK | libc::ISTRIP | libc::IXON;
+                termios.c_iflag |=
+                    libc::BRKINT | libc::ICRNL | libc::INPCK | libc::ISTRIP | libc::IXON;
                 termios.c_oflag |= libc::OPOST;
                 termios.c_cflag |= libc::CS8;
                 termios.c_lflag |= libc::ECHO | libc::ICANON | libc::IEXTEN | libc::ISIG;
